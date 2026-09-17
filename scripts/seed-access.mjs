@@ -35,7 +35,7 @@ async function run() {
   if (new Set(emails).size !== emails.length) throw new Error("DUPLICATE_EMAIL");
   for (const account of secondaryUsers) validateNewPassword(account.password);
 
-  const pool = new pg.Pool({ connectionString: input.databaseUrl, max: 2 });
+  const pool = new pg.Pool({ connectionString: input.databaseUrl, max: 2, connectionTimeoutMillis: 10000 });
   try {
     const db = drizzle(pool);
     const result = await db.transaction(async tx => {
@@ -134,8 +134,19 @@ try {
     console.error("Seed recusado: uma conta já existe com acesso diferente. Nenhuma permissão foi alterada.");
   } else if (error instanceof Error && error.message === "DUPLICATE_EMAIL") {
     console.error("Seed recusado: há e-mails repetidos na configuração.");
-  } else if (error instanceof z.ZodError || error instanceof SyntaxError || (error instanceof Error && error.message.startsWith("A senha"))) {
-    console.error("Variáveis de seed inválidas. Confira e-mail, nome, workspace e senha de pelo menos 15 caracteres.");
+  } else if (error instanceof z.ZodError) {
+    const labels = {
+      databaseUrl: "DATABASE_URL", email: "SEED_OWNER_EMAIL", name: "SEED_OWNER_NAME",
+      workspaceName: "SEED_WORKSPACE_NAME", password: "SEED_OWNER_PASSWORD",
+    };
+    const fields = [...new Set(error.issues.map(issue =>
+      labels[issue.path[0]] ?? `SEED_ACCESS_USERS${issue.path.length ? ` (${issue.path.slice(1).join(".")})` : ""}`
+    ))];
+    console.error(`Variáveis de seed ausentes ou inválidas: ${fields.join(", ")}. Nenhum valor foi exibido.`);
+  } else if (error instanceof SyntaxError) {
+    console.error("SEED_ACCESS_USERS contém JSON inválido. Use [] para não criar contas adicionais.");
+  } else if (error instanceof Error && (error.message.startsWith("A senha") || error.message === "Senha inválida.")) {
+    console.error("Senha de seed inválida: use pelo menos 15 caracteres e no máximo 1024 bytes.");
   } else {
     console.error("Não foi possível criar o acesso inicial. Confira a conexão e a migration do banco.");
   }
