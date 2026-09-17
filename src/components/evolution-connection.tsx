@@ -49,7 +49,17 @@ export function EvolutionConnection() {
     event.preventDefault(); setMode("loading"); setMessage("");
     try {
       const response = await fetch("/api/integrations/evolution", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "login", token }) });
-      if (!response.ok) { setMode("locked"); setMessage(response.status === 429 ? "Muitas tentativas. Aguarde alguns minutos." : "Chave de configuração inválida."); return; }
+      if (!response.ok) {
+        setMode("locked");
+        const errors: Record<number, string> = {
+          401: "Chave de configuração inválida.",
+          403: "Origem do site recusada (HTTP 403). Acesse pelo domínio configurado no Ofertou.",
+          429: "Muitas tentativas. Aguarde 15 minutos antes de tentar novamente.",
+          503: "Integração indisponível (HTTP 503). Confira as variáveis da Evolution no serviço Ofertou.",
+        };
+        setMessage(errors[response.status] ?? `Não foi possível acessar a conexão (HTTP ${response.status}).`);
+        return;
+      }
       setToken(""); await refresh();
     } catch { setMode("locked"); setMessage("Falha ao acessar o servidor."); }
   }
