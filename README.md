@@ -16,7 +16,13 @@ Se o serviço EasyPanel estiver configurado para construir com Dockerfile, use `
 
 Para hospedar a Evolution API em outro serviço, use [`.env.evolution.easypanel.example`](.env.evolution.easypanel.example) como modelo do ambiente **da Evolution**, de acordo com a versão da imagem escolhida. Ela deve ter um banco PostgreSQL separado do Ofertou. Use a mesma chave em `AUTHENTICATION_API_KEY` (Evolution) e `EVOLUTION_API_KEY` (Ofertou); copie a URL interna do Redis nos dois serviços. Não coloque as senhas reais nos arquivos do repositório. Se a senha da URL contiver caracteres especiais, codifique-os para URL ou copie a URL pronta fornecida pelo EasyPanel.
 
-Neste estágio, apenas `DATABASE_URL` é lida pelo comando de migrations e pelo seed manual. `REDIS_URL`, `EVOLUTION_API_URL`, `EVOLUTION_API_KEY` e `OPENAI_API_KEY` ficam preparados para a implementação posterior de fila, envio e IA; colá-las no EasyPanel **não ativa** essas funções nem o login. Para publicar só a demonstração, `NODE_ENV` e `PORT` são suficientes. As variáveis `SEED_OWNER_*` de [`.env.example`](.env.example) devem ser usadas somente no processo manual do seed, nunca como senha permanente do app.
+Neste estágio, `DATABASE_URL` é lida pelo comando de migrations e pelo seed manual. `EVOLUTION_API_URL`, `EVOLUTION_API_KEY` e `EVOLUTION_INSTANCE_NAME` são usadas pela tela protegida de conexão do WhatsApp. `REDIS_URL` e `OPENAI_API_KEY` ficam preparados para fila e IA; colá-las no EasyPanel **não ativa** envio de mensagens nem login geral do app. Para publicar só a demonstração, `NODE_ENV` e `PORT` são suficientes. As variáveis `SEED_OWNER_*` de [`.env.example`](.env.example) devem ser usadas somente no processo manual do seed, nunca como senha permanente do app.
+
+### Conectar WhatsApp pelo Ofertou
+
+No ambiente **do app Ofertou**, configure `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE_NAME` e `EVOLUTION_SETUP_TOKEN`. Gere o último com 32 bytes aleatórios, por exemplo `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`, e guarde-o fora do repositório. A chave de configuração é diferente da chave da API e do segredo do webhook. Em `/integrations`, informe essa chave uma vez; o servidor cria uma sessão protegida de 30 minutos em cookie HttpOnly. Use **Conectar** para obter o QR Code e escaneie-o no WhatsApp em **Aparelhos conectados**. **Atualizar** consulta o estado da instância; a tela também consulta a cada 10 segundos enquanto estiver desconectada.
+
+As chamadas para `instance/connectionState` e `instance/connect` são feitas apenas no servidor. A chave da Evolution não é enviada ao navegador. Esta tela é uma operação de configuração isolada; não substitui o login geral, a associação a workspace, a auditoria persistente ou as permissões finais do SaaS. Grupos e envios continuam demonstrativos. Use a chave de configuração apenas com administradores e troque-a se for divulgada.
 
 ### Webhook da Evolution API
 
