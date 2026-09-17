@@ -22,6 +22,8 @@ Neste estágio, `DATABASE_URL` é lida pelo comando de migrations e pelo seed ma
 
 No ambiente **do app Ofertou**, configure `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE_NAME` e `EVOLUTION_SETUP_TOKEN`. Gere o último com 32 bytes aleatórios, por exemplo `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`, e guarde-o fora do repositório. A chave de configuração é diferente da chave da API e do segredo do webhook. Em `/integrations`, informe essa chave uma vez; o servidor cria uma sessão protegida de 30 minutos em cookie HttpOnly. Use **Conectar** para obter o QR Code e escaneie-o no WhatsApp em **Aparelhos conectados**. **Atualizar** consulta o estado da instância; a tela também consulta a cada 10 segundos enquanto estiver desconectada.
 
+Quando o app estiver atrás do proxy do EasyPanel, configure também `OFERTOU_PUBLIC_ORIGIN` no serviço **do app** com a origem exata do site, por exemplo `https://ofertou.exemplo.com` (sem caminho ou barra final). O servidor compara o cabeçalho `Origin` das operações de escrita com esse valor fixo; a URL interna recebida do proxy pode ser diferente do domínio visível no navegador. Salve e implante o serviço após alterar a variável. O worker não precisa dela.
+
 As chamadas para `instance/connectionState` e `instance/connect` são feitas apenas no servidor. A chave da Evolution não é enviada ao navegador. Use a chave de configuração apenas com administradores e troque-a se for divulgada.
 
 ### Publicar ofertas no único grupo autorizado

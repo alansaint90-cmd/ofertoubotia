@@ -3,11 +3,12 @@ import { after, before, test } from "node:test";
 import { connectionState, connect } from "../src/lib/evolution/client.ts";
 import { hasSetupSession, sameOrigin, sessionCookie, setupReady, validSetupToken } from "../src/lib/evolution/setup.ts";
 
-const names = ["EVOLUTION_API_URL", "EVOLUTION_API_KEY", "EVOLUTION_INSTANCE_NAME", "EVOLUTION_SETUP_TOKEN"];
+const names = ["EVOLUTION_API_URL", "EVOLUTION_API_KEY", "EVOLUTION_INSTANCE_NAME", "EVOLUTION_SETUP_TOKEN", "OFERTOU_PUBLIC_ORIGIN"];
 const original = Object.fromEntries(names.map(name => [name, process.env[name]]));
 const originalFetch = globalThis.fetch;
 
 before(() => {
+  delete process.env.OFERTOU_PUBLIC_ORIGIN;
   process.env.EVOLUTION_API_URL = "https://evolution.example.test";
   process.env.EVOLUTION_API_KEY = "test-api-key";
   process.env.EVOLUTION_INSTANCE_NAME = "ofertou-test";
@@ -38,6 +39,13 @@ test("operações de escrita exigem mesma origem", () => {
   assert.equal(sameOrigin(new Request(url, { headers: { origin: "https://ofertou.example.test" } })), true);
   assert.equal(sameOrigin(new Request(url, { headers: { origin: "https://outra.example.test" } })), false);
   assert.equal(sameOrigin(new Request(url)), false);
+  process.env.OFERTOU_PUBLIC_ORIGIN = "https://ofertou.example.test";
+  const internalUrl = "http://ofertouia:3000/api/integrations/evolution";
+  assert.equal(sameOrigin(new Request(internalUrl, { headers: { origin: "https://ofertou.example.test" } })), true);
+  assert.equal(sameOrigin(new Request(internalUrl, { headers: { origin: "https://outra.example.test" } })), false);
+  process.env.OFERTOU_PUBLIC_ORIGIN = "https://ofertou.example.test/path";
+  assert.equal(sameOrigin(new Request(internalUrl, { headers: { origin: "https://ofertou.example.test" } })), false);
+  delete process.env.OFERTOU_PUBLIC_ORIGIN;
 });
 
 test("consulta de estado usa chave somente na chamada servidor a servidor", async () => {

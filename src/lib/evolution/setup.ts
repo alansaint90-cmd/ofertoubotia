@@ -46,5 +46,11 @@ export function hasSetupSession(request: Request): boolean {
 export function sameOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
   if (!origin) return false;
-  try { return new URL(origin).origin === new URL(request.url).origin; } catch { return false; }
+  try {
+    const configured = process.env.OFERTOU_PUBLIC_ORIGIN?.trim();
+    if (!configured) return origin === new URL(request.url).origin;
+    const publicUrl = new URL(configured);
+    if (!["https:", "http:"].includes(publicUrl.protocol) || publicUrl.username || publicUrl.password || publicUrl.pathname !== "/" || publicUrl.search || publicUrl.hash) return false;
+    return origin === publicUrl.origin;
+  } catch { return false; }
 }
