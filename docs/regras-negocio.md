@@ -14,6 +14,7 @@ Produto → link de afiliado → oferta → revisão da copy → grupos → publ
 - O perfil em Meus Dados fica no navegador e não cria conta, sessão ou permissão. Nome é obrigatório; e-mail e telefone são opcionais e validados.
 - Relatórios contam ofertas pela data de criação, com filtros de 7 dias, 30 dias ou todo o período. Uma oferta conta uma vez por grupo selecionado, mesmo se o grupo aparecer repetido. Grupos ativos mostram o estado atual, independentemente do período.
 - A central de ajuda explica os limites do modo demonstração; não envia pedidos de suporte.
+- O webhook Evolution valida um segredo de cabeçalho e o nome da instância antes de aceitar eventos; seu recebimento não significa que dados foram persistidos ou processados.
 
 ## Operação real a implementar
 

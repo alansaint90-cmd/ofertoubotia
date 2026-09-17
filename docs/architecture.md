@@ -7,6 +7,7 @@
 - `src/lib/demo.ts`: produtos e grupos de exemplo, formatação e copy determinística.
 - `src/lib/demo-profile.ts` e `src/lib/reports.ts`: validação do perfil local e agregação dos relatórios de demonstração.
 - `src/components/profile-page.tsx`, `reports-page.tsx` e `help-page.tsx`: telas de perfil, relatórios e FAQ.
+- `src/app/api/webhooks/evolution/route.ts`: receptor autenticado e limitado para eventos da Evolution, ainda sem efeitos sobre o banco ou a interface.
 - `src/lib/db/schema/index.ts`: 13 tabelas PostgreSQL com auditoria, exclusão lógica e FKs restritivas.
 - `src/lib/db/migrations`: migrations do esquema inicial e das credenciais locais.
 - `src/lib/auth`: hash Argon2id e matriz de permissões para o acesso local de demonstração.
