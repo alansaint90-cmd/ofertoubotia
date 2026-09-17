@@ -8,11 +8,13 @@ Requer Node.js 24 e pnpm. Execute `pnpm install` e `pnpm dev`, então abra `http
 
 O modo demo apresenta produtos, grupos, editor de oferta, agendamento local, histórico visual, perfil, central de ajuda e relatórios básicos. Não envia mensagens e não gera links afiliados reais. Ofertas, agendamentos e dados do perfil ficam neste navegador. Os relatórios usam apenas esses registros locais; cliques, vendas e comissões não estão disponíveis. O esquema PostgreSQL e as migrations já estão em `src/lib/db`, mas a interface demo ainda não utiliza o banco.
 
-## EasyPanel (modo demonstração)
+## EasyPanel
 
-Copie o conteúdo de [`.env.easypanel.example`](.env.easypanel.example) para **App → Environment**. Configure o domínio para a porta interna `3000`. Use Node.js 24, instale as dependências com `pnpm install --frozen-lockfile`, compile com `pnpm build` e inicie com `pnpm start`. O EasyPanel aceita linhas `CHAVE=valor` e fornece essas variáveis ao build e ao contêiner.
+Copie o conteúdo de [`.env.easypanel.example`](.env.easypanel.example) para **App → Environment**, substituindo todos os marcadores. Crie serviços PostgreSQL 16 e Redis no mesmo projeto e copie as URLs internas de **Credentials**. Configure o domínio do app para a porta interna `3000`. Use Node.js 24, instale as dependências com `pnpm install --frozen-lockfile`, compile com `pnpm build` e inicie com `pnpm start`. O EasyPanel aceita linhas `CHAVE=valor` e fornece essas variáveis ao build e ao contêiner.
 
-Não é necessário configurar PostgreSQL nem inserir chaves de Shopee, Evolution API ou IA para publicar a demonstração. As variáveis adicionais de [`.env.example`](.env.example) pertencem a migrations, seed manual ou integrações futuras e não tornam o login ou os envios funcionais nesta versão.
+Para hospedar a Evolution API em outro serviço, use [`.env.evolution.easypanel.example`](.env.evolution.easypanel.example) como modelo do ambiente **da Evolution**, de acordo com a versão da imagem escolhida. Ela deve ter um banco PostgreSQL separado do Ofertou. Use a mesma chave em `AUTHENTICATION_API_KEY` (Evolution) e `EVOLUTION_API_KEY` (Ofertou); copie a URL interna do Redis nos dois serviços. Não coloque as senhas reais nos arquivos do repositório. Se a senha da URL contiver caracteres especiais, codifique-os para URL ou copie a URL pronta fornecida pelo EasyPanel.
+
+Neste estágio, apenas `DATABASE_URL` é lida pelo comando de migrations e pelo seed manual. `REDIS_URL`, `EVOLUTION_API_URL`, `EVOLUTION_API_KEY` e `OPENAI_API_KEY` ficam preparados para a implementação posterior de fila, envio e IA; colá-las no EasyPanel **não ativa** essas funções nem o login. Para publicar só a demonstração, `NODE_ENV` e `PORT` são suficientes. As variáveis `SEED_OWNER_*` de [`.env.example`](.env.example) devem ser usadas somente no processo manual do seed, nunca como senha permanente do app.
 
 ## Seed manual de acesso local
 
