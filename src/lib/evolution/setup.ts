@@ -28,7 +28,7 @@ export function validSetupToken(value: unknown): boolean {
 
 export function sessionCookie(): string {
   const payload = Buffer.from(JSON.stringify({ instance: process.env.EVOLUTION_INSTANCE_NAME, scope: "integrations:manage", expires: Date.now() + SESSION_SECONDS * 1000 })).toString("base64url");
-  return `${COOKIE}=${payload}.${signature(payload)}; HttpOnly; SameSite=Strict; Path=/api/integrations/evolution; Max-Age=${SESSION_SECONDS}${process.env.NODE_ENV === "production" ? "; Secure" : ""}`;
+  return `${COOKIE}=${payload}.${signature(payload)}; HttpOnly; SameSite=Strict; Path=/api; Max-Age=${SESSION_SECONDS}${process.env.NODE_ENV === "production" ? "; Secure" : ""}`;
 }
 
 export function hasSetupSession(request: Request): boolean {

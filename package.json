@@ -12,7 +12,8 @@
     "test": "node --test tests/*.test.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "seed:access": "node scripts/seed-access.mjs"
+    "seed:access": "node scripts/seed-access.mjs",
+    "worker:evolution": "node scripts/dispatch-worker.mjs"
   },
   "dependencies": {
     "argon2": "^0.45.1",

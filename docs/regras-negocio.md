@@ -35,3 +35,11 @@ Produto → link de afiliado → oferta → revisão da copy → grupos → publ
 - Executar o seed novamente não redefine senha nem altera o papel de uma conta existente; conflitos fazem a transação falhar.
 - O primeiro membro recebe `owner`; novas associações no banco têm `visualizador` como padrão.
 - O seed não ativa uma tela de login. Login, sessão, bloqueio por tentativas, segundo fator e RLS ainda precisam de implementação e teste antes de liberar acesso real.
+
+## Publicação limitada para um grupo
+
+- A sessão de configuração protegida por `EVOLUTION_SETUP_TOKEN` pode vincular somente o grupo cujo convite corresponde ao hash permitido no servidor.
+- O Ofertou confere que a instância conectada participa desse grupo. A API de publicação não recebe um destinatário escolhido pelo navegador.
+- Apenas após revisão explícita, link HTTPS e clique em Publicar, a oferta entra na fila persistente. O mesmo produto não é reenviado ao grupo por 24 horas.
+- O worker separado confere novamente o vínculo antes de enviar. Falhas antes da chamada de envio têm até três tentativas; resultado incerto não é reenviado automaticamente.
+- `accepted` indica aceitação pela Evolution API e não comprova entrega. Não existe publicação automática a partir de produtos demonstrativos.

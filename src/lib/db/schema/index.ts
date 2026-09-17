@@ -128,6 +128,7 @@ export const scheduledPublications = pgTable("scheduled_publications", {
 
 export const dispatches = pgTable("dispatches", {
   id: uuid("id").primaryKey().defaultRandom(),
+  requestId: uuid("request_id").unique(),
   workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "restrict", onUpdate: "restrict" }),
   offerId: uuid("offer_id").notNull().references(() => offers.id, { onDelete: "restrict", onUpdate: "restrict" }),
   groupId: uuid("group_id").notNull().references(() => whatsappGroups.id, { onDelete: "restrict", onUpdate: "restrict" }),

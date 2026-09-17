@@ -14,7 +14,10 @@ before(() => {
   process.env.EVOLUTION_SETUP_TOKEN = "test-only-setup-token-with-at-least-32-characters";
 });
 after(() => {
-  for (const name of names) original[name] === undefined ? delete process.env[name] : process.env[name] = original[name];
+  for (const name of names) {
+    if (original[name] === undefined) delete process.env[name];
+    else process.env[name] = original[name];
+  }
   globalThis.fetch = originalFetch;
 });
 

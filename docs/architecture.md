@@ -12,6 +12,9 @@
 - `src/lib/db/migrations`: migrations do esquema inicial e das credenciais locais.
 - `src/lib/auth`: hash Argon2id e matriz de permissões para o acesso local de demonstração.
 - `scripts/seed-access.mjs`: provisionamento manual e idempotente do primeiro dono.
+- `src/app/api/integrations/evolution/group/route.ts`: vínculo protegido de um único grupo, conferido com o convite e a lista de grupos da instância.
+- `src/app/api/dispatches/route.ts`: criação auditada de ofertas revisadas e envios na fila do PostgreSQL.
+- `scripts/dispatch-worker.mjs`: processo separado que envia textos somente ao grupo vinculado e registra o resultado.
 
 O modo demo serve para navegar pelo Golden Path e validar a experiência sem credenciais externas. Seus dados ficam no navegador e não são compartilhados entre dispositivos.
 
@@ -24,4 +27,4 @@ O modo demo serve para navegar pelo Golden Path e validar a experiência sem cre
 5. `MessagingProvider` para Evolution API, com status, QR e sincronização de grupos.
 6. Redis/BullMQ e worker separado para agendamento, envio, retentativas e anti-repetição.
 
-Não habilitar publicações até que autenticação, banco, fila e integrações estejam conectados e testados.
+O fluxo limitado de publicação exige sessão de configuração, workspace do dono, banco migrado, grupo vinculado e worker separado. A autenticação geral do SaaS, a descoberta automática de produtos e os agendamentos reais continuam pendentes.

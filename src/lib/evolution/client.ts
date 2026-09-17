@@ -11,10 +11,10 @@ function config() {
   return { url, key: process.env.EVOLUTION_API_KEY!, instance: process.env.EVOLUTION_INSTANCE_NAME! };
 }
 
-async function call(path: string): Promise<unknown> {
+export async function evolutionRequest(path: string, init: { method?: "GET" | "POST"; body?: unknown } = {}): Promise<unknown> {
   const { url, key } = config();
   const target = new URL(path, `${url.toString().replace(/\/$/, "")}/`);
-  const response = await fetch(target, { headers: { apikey: key, Accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(10000) });
+  const response = await fetch(target, { method: init.method ?? "GET", headers: { apikey: key, Accept: "application/json", ...(init.body === undefined ? {} : { "Content-Type": "application/json" }) }, body: init.body === undefined ? undefined : JSON.stringify(init.body), cache: "no-store", signal: AbortSignal.timeout(10000) });
   if (!response.ok) throw new Error(`evolution_http_${response.status}`);
   return response.json();
 }
@@ -25,13 +25,13 @@ function state(value: unknown): EvolutionResult["state"] {
 
 export async function connectionState(): Promise<EvolutionResult> {
   const { instance } = config();
-  const parsed = stateSchema.parse(await call(`instance/connectionState/${encodeURIComponent(instance)}`));
+  const parsed = stateSchema.parse(await evolutionRequest(`instance/connectionState/${encodeURIComponent(instance)}`));
   return { state: state(parsed.instance?.state), qr: null };
 }
 
 export async function connect(): Promise<EvolutionResult> {
   const { instance } = config();
-  const parsed = qrSchema.parse(await call(`instance/connect/${encodeURIComponent(instance)}`));
+  const parsed = qrSchema.parse(await evolutionRequest(`instance/connect/${encodeURIComponent(instance)}`));
   if (parsed.error) throw new Error("evolution_connect_failed");
   const raw = parsed.base64 ?? parsed.qrcode?.base64;
   const qr = raw && /^(data:image\/png;base64,)?[a-zA-Z0-9+/=]+$/.test(raw) && raw.length <= 500000

@@ -114,9 +114,10 @@ async function run() {
         });
         additionalCreated++;
       }
-      return { ownerCreated, additionalCreated };
+      return { ownerCreated, additionalCreated, workspaceId };
     });
     console.log(`Seed concluído: dono ${result.ownerCreated ? "criado" : "existente"}; ${result.additionalCreated} conta(s) adicional(is) criada(s). Nenhuma senha existente foi alterada.`);
+    console.log(`Workspace ID: ${result.workspaceId}`);
   } finally {
     await pool.end();
   }

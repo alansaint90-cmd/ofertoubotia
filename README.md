@@ -22,7 +22,17 @@ Neste estágio, `DATABASE_URL` é lida pelo comando de migrations e pelo seed ma
 
 No ambiente **do app Ofertou**, configure `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE_NAME` e `EVOLUTION_SETUP_TOKEN`. Gere o último com 32 bytes aleatórios, por exemplo `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`, e guarde-o fora do repositório. A chave de configuração é diferente da chave da API e do segredo do webhook. Em `/integrations`, informe essa chave uma vez; o servidor cria uma sessão protegida de 30 minutos em cookie HttpOnly. Use **Conectar** para obter o QR Code e escaneie-o no WhatsApp em **Aparelhos conectados**. **Atualizar** consulta o estado da instância; a tela também consulta a cada 10 segundos enquanto estiver desconectada.
 
-As chamadas para `instance/connectionState` e `instance/connect` são feitas apenas no servidor. A chave da Evolution não é enviada ao navegador. Esta tela é uma operação de configuração isolada; não substitui o login geral, a associação a workspace, a auditoria persistente ou as permissões finais do SaaS. Grupos e envios continuam demonstrativos. Use a chave de configuração apenas com administradores e troque-a se for divulgada.
+As chamadas para `instance/connectionState` e `instance/connect` são feitas apenas no servidor. A chave da Evolution não é enviada ao navegador. Use a chave de configuração apenas com administradores e troque-a se for divulgada.
+
+### Publicar ofertas no único grupo autorizado
+
+O envio real exige PostgreSQL migrado, o seed de acesso e um worker separado. Execute `pnpm db:migrate` e `pnpm seed:access` no ambiente do banco do Ofertou. O seed mostra o `Workspace ID`; configure esse UUID como `EVOLUTION_WORKSPACE_ID` no app **e** no worker. Também configure `DATABASE_URL`, `EVOLUTION_API_URL`, `EVOLUTION_API_KEY` e `EVOLUTION_INSTANCE_NAME` nos dois serviços. O app ainda precisa de `EVOLUTION_SETUP_TOKEN` para liberar a operação protegida. Crie um segundo serviço no EasyPanel com o mesmo código/imagem, sem domínio público, e comando `pnpm worker:evolution`; não execute dois workers para a mesma operação sem planejar a capacidade.
+
+Em **Integrações**, acesse com a chave de configuração e cole o convite do grupo indicado para esta operação. O Ofertou consulta a Evolution, confere que o número conectado participa do grupo e grava seu ID como único destino ativo. O código do convite é comparado no servidor com um hash do grupo autorizado; outro convite é recusado. O convite não é publicado no repositório.
+
+No editor, revise a mensagem, substitua os dados demonstrativos por dados reais, informe um link de afiliado HTTPS válido, marque a confirmação e clique em **Publicar no grupo autorizado**. O servidor grava a oferta e o envio na fila do PostgreSQL; o worker consulta a conexão e envia somente ao ID do grupo vinculado. O botão não chama a Evolution diretamente. O mesmo produto fica bloqueado nesse grupo por 24 horas. Falhas antes da chamada de envio podem ser tentadas até três vezes; quando o resultado do envio é incerto, o worker não repete automaticamente para evitar duplicidade. `accepted` significa aceito pela Evolution, não entregue aos participantes.
+
+Esta operação usa uma chave de configuração de alta entropia e o workspace do dono sem habilitar login geral do SaaS. As ações de vinculação e envio são registradas em `audit_logs` com a origem da sessão de configuração. O catálogo e os agendamentos da interface continuam demonstrativos. O envio só ocorre após clique explícito e revisão; não há descoberta automática de ofertas nem envio agendado.
 
 ### Webhook da Evolution API
 

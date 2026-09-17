@@ -6,12 +6,16 @@ import Image from "next/image";
 
 type State = "idle" | "locked" | "ready" | "loading" | "unavailable";
 type Connection = { state: "open" | "connecting" | "close" | "unknown"; qr: string | null };
+type AuthorizedGroup = { id: string; name: string; externalGroupId: string };
 
 export function EvolutionConnection() {
   const [mode, setMode] = useState<State>("idle");
   const [connection, setConnection] = useState<Connection>({ state: "unknown", qr: null });
   const [token, setToken] = useState("");
   const [message, setMessage] = useState("");
+  const [group, setGroup] = useState<AuthorizedGroup | null>(null);
+  const [inviteLink, setInviteLink] = useState("");
+  const [binding, setBinding] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -31,6 +35,15 @@ export function EvolutionConnection() {
     const timer = window.setInterval(() => { void refresh(); }, 10000);
     return () => window.clearInterval(timer);
   }, [mode, connection.state, refresh]);
+  useEffect(() => {
+    if (mode !== "ready" || connection.state !== "open") return;
+    let active = true;
+    void fetch("/api/integrations/evolution/group", { cache: "no-store" })
+      .then(async response => { if (!response.ok) throw new Error(); return response.json() as Promise<{ group: AuthorizedGroup | null }>; })
+      .then(result => { if (active) setGroup(result.group); })
+      .catch(() => { if (active) setMessage("O grupo ainda não pode ser consultado. Verifique o banco e EVOLUTION_WORKSPACE_ID."); });
+    return () => { active = false; };
+  }, [mode, connection.state]);
 
   async function login(event: React.FormEvent) {
     event.preventDefault(); setMode("loading"); setMessage("");
@@ -53,6 +66,20 @@ export function EvolutionConnection() {
     } catch { setMode("ready"); setMessage("Não foi possível obter o QR Code. Confira se a instância existe e se a Evolution API está acessível."); }
   }
 
+  async function bindGroup(event: React.FormEvent) {
+    event.preventDefault(); setBinding(true); setMessage("");
+    try {
+      const response = await fetch("/api/integrations/evolution/group", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ link: inviteLink }) });
+      const result = await response.json() as { group?: AuthorizedGroup; error?: string };
+      if (!response.ok || !result.group) {
+        const errors: Record<string, string> = { wrong_group: "Este não é o grupo autorizado.", whatsapp_not_connected: "Conecte o WhatsApp antes de selecionar o grupo.", not_group_member: "O número conectado não participa deste grupo.", group_lookup_failed: "Não foi possível identificar o grupo pelo convite.", group_save_failed: "Não foi possível salvar o grupo. Verifique o banco e o workspace." };
+        setMessage(errors[result.error ?? ""] ?? "Falha ao ativar o grupo."); return;
+      }
+      setGroup(result.group); setInviteLink(""); setMessage("Grupo autorizado. Ofertas revisadas poderão ser enfileiradas pelo botão Publicar.");
+    } catch { setMessage("Falha ao acessar o servidor."); }
+    finally { setBinding(false); }
+  }
+
   const connected = connection.state === "open" && mode === "ready";
   return <div className="integration-card evolution-card">
     <div className="integration-logo whatsapp"><MessageCircle size={29}/></div>
@@ -66,9 +93,11 @@ export function EvolutionConnection() {
       <button className="button outline" type="submit"><ShieldCheck size={15}/> Acessar conexão</button>
     </form>}
     {(mode === "ready" || mode === "loading") && <>
-      {connected && <div className="evolution-message success">Instância conectada ao WhatsApp. Os grupos e envios do Ofertou ainda estão em demonstração.</div>}
+      {connected && <div className="evolution-message success">Instância conectada ao WhatsApp.</div>}
+      {connected && group && <div className="evolution-message success"><strong>Grupo autorizado:</strong> {group.name}<br/><small>{group.externalGroupId}</small></div>}
+      {connected && !group && <form className="evolution-login" onSubmit={bindGroup}><label className="field">Link do único grupo autorizado<input type="url" value={inviteLink} onChange={event => setInviteLink(event.target.value)} required placeholder="https://chat.whatsapp.com/..."/></label><button className="button outline" type="submit" disabled={binding}>{binding ? "Verificando..." : "Autorizar este grupo"}</button></form>}
       {connection.qr && !connected && <div className="evolution-qr"><Image unoptimized src={connection.qr} alt="QR Code para conectar o WhatsApp" width={230} height={230}/><p>No WhatsApp do celular, abra Aparelhos conectados e escaneie este código.</p></div>}
-      <div className="integration-foot"><span>{connected ? "Estado confirmado pela Evolution API" : "A conexão não ativa envios automáticos"}</span><div className="evolution-actions"><button className="button outline" disabled={mode === "loading"} onClick={() => void refresh()}><RefreshCw size={15}/> Atualizar</button>{!connected && <button className="button outline" disabled={mode === "loading"} onClick={() => void connect()}>{connection.qr ? "Novo QR Code" : "Conectar"}</button>}</div></div>
+      <div className="integration-foot"><span>{connected ? "Estado confirmado pela Evolution API" : "Conecte para autorizar o grupo"}</span><div className="evolution-actions"><button className="button outline" disabled={mode === "loading"} onClick={() => void refresh()}><RefreshCw size={15}/> Atualizar</button>{!connected && <button className="button outline" disabled={mode === "loading"} onClick={() => void connect()}>{connection.qr ? "Novo QR Code" : "Conectar"}</button>}</div></div>
     </>}
     {message && <div className="evolution-message error" role="alert">{message}</div>}
   </div>;

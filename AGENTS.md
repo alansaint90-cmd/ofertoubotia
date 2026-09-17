@@ -24,3 +24,5 @@ O Ofertou organiza a operação de afiliados: descoberta de produtos, criação 
 A interface contém um modo demonstração local. Produtos, grupos e agendamentos do modo demo são fictícios e não representam envios. Não apresentar esses registros como dados de produção.
 
 O hash Argon2id, a matriz de papéis e o seed manual de contas locais estão preparados no servidor. A interface ainda não autentica usuários: não tratar essas contas como login funcional até existir sessão, segundo fator, bloqueio de tentativas, RLS e auditoria de entrada.
+
+Existe uma sessão de configuração separada, protegida por chave aleatória, para conectar a Evolution e vincular o único grupo autorizado. A publicação real limitada exige workspace do dono no PostgreSQL, revisão manual, link real, clique explícito e worker separado. A sessão de configuração não é login geral do SaaS; não reutilizá-la para operações fora desse fluxo.
