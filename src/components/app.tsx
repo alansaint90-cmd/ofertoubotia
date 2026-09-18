@@ -146,13 +146,19 @@ export function App() {
     if (!offerConfirmed) return setNotice("Confirme que revisou produto, preço, mensagem e link antes de publicar.");
     if (!headline.trim() || body.trim().length < 5 || !affiliateLink.trim()) return setNotice("Preencha título, mensagem e link de afiliado real.");
     if (body.includes("[adicione seu link de afiliado]")) return setNotice("Atualize a mensagem: ela ainda contém o marcador do link demonstrativo.");
+    let link: URL;
+    try { link = new URL(affiliateLink.trim()); }
+    catch { return setNotice("O link de afiliado precisa ser uma URL completa começando com https://."); }
+    if (link.protocol !== "https:" || link.username || link.password || link.hostname === "localhost" || affiliateLink.trim().length > 1000) {
+      return setNotice("Use um link de afiliado HTTPS público e válido.");
+    }
     setPublishing(true);
     const requestId = crypto.randomUUID();
     try {
-      const response = await fetch("/api/dispatches", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestId, productId: currentProduct.id, headline, body, affiliateLink, confirmed: true }) });
+      const response = await fetch("/api/dispatches", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requestId, productId: currentProduct.id, headline, body, affiliateLink: affiliateLink.trim(), confirmed: true }) });
       const result = await response.json() as { error?: string; status?: string };
       if (!response.ok) {
-        const errors: Record<string, string> = { unauthorized: "Acesse a conexão do WhatsApp em Integrações antes de publicar.", group_not_bound: "Autorize o grupo em Integrações antes de publicar.", duplicate_24h: "Este produto já foi publicado ou está na fila para esse grupo nas últimas 24 horas.", invalid_offer: "Use um link HTTPS válido para a oferta.", dispatch_unavailable: "A fila não está disponível. Verifique banco, workspace e worker." };
+        const errors: Record<string, string> = { unauthorized: "Acesse a conexão do WhatsApp em Integrações antes de publicar.", forbidden: "Origem do site recusada. Confira OFERTOU_PUBLIC_ORIGIN no serviço Ofertou.", group_not_bound: "Autorize o grupo em Integrações antes de publicar.", duplicate_24h: "Este produto já foi publicado ou está na fila para esse grupo nas últimas 24 horas.", invalid_request: "Revise título, mensagem e link HTTPS da oferta.", invalid_offer: "Use um link HTTPS válido para a oferta.", dispatch_unavailable: "A fila não está disponível. Verifique banco, workspace e worker." };
         return setNotice(errors[result.error ?? ""] ?? "Não foi possível enfileirar a oferta.");
       }
       setQueuedRequestId(requestId); setQueuedStatus(result.status ?? "queued");

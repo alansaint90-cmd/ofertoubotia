@@ -79,7 +79,8 @@ export async function POST(request: Request): Promise<Response> {
         .where(and(eq(dispatches.workspaceId, workspaceId), eq(dispatches.groupId, group.id), eq(offers.externalProductId, product.id), inArray(dispatches.status, ["queued", "processing", "accepted", "uncertain"]), gte(dispatches.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000)), eq(dispatches.isDeleted, false), eq(offers.isDeleted, false)))
         .limit(1);
       if (recent) throw new Error("duplicate_24h");
-      const message = parsed.data.body.includes(link) ? parsed.data.body : `${parsed.data.body}\n\n🛒 ${link}`;
+      const message = parsed.data.body.includes(link) || parsed.data.body.includes(parsed.data.affiliateLink)
+        ? parsed.data.body : `${parsed.data.body}\n\n🛒 ${link}`;
       const [offer] = await tx.insert(offers).values({ workspaceId, provider: "manual_review", externalProductId: product.id, productSnapshot: { source: "demo_catalog", productId: product.id, name: product.name, affiliateLink: link, confirmedByOperator: true }, headline: parsed.data.headline, body: message, status: "queued", createdBy: actorId, modifiedBy: actorId }).returning({ id: offers.id });
       const [dispatch] = await tx.insert(dispatches).values({ requestId: parsed.data.requestId, workspaceId, offerId: offer.id, groupId: group.id, status: "queued", queuedAt: new Date(), modifiedBy: actorId }).returning({ id: dispatches.id });
       await tx.insert(auditLogs).values({ workspaceId, actorId, operation: "dispatch.queued", entityType: "dispatch", entityId: dispatch.id, metadata: { source: "setup_session", targetInviteHash: TARGET_INVITE_HASH }, modifiedBy: actorId });
