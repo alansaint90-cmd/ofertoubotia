@@ -26,6 +26,12 @@ Quando o app estiver atrás do proxy do EasyPanel, configure também `OFERTOU_PU
 
 As chamadas para `instance/connectionState` e `instance/connect` são feitas apenas no servidor. A chave da Evolution não é enviada ao navegador. Use a chave de configuração apenas com administradores e troque-a se for divulgada.
 
+### Credenciais de afiliados
+
+A página **Integrações** contém formulários para AliExpress, Amazon, AWIN, Shopee, Magalu e Mercado Livre. O acesso exige a mesma sessão protegida de configuração usada pela Evolution. Antes de salvar, configure `INTEGRATIONS_ENCRYPTION_KEY` somente no ambiente do app Ofertou com uma chave aleatória de 32 bytes em hexadecimal, gerada por `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`, e implante novamente o serviço. Não reutilize chaves da Evolution, do webhook ou de outros sistemas.
+
+As credenciais são validadas no servidor, criptografadas com AES-256-GCM e armazenadas em `affiliate_integrations.credentials_encrypted`. A API de leitura retorna somente provedor, estado e data de atualização; segredos salvos nunca retornam ao navegador. Cada novo salvamento substitui o conjunto anterior do provedor e registra a ação em auditoria. Nesta fase, **Configurado** significa apenas que os campos foram armazenados com segurança; não confirma autenticação no provedor, consulta produtos ou geração de links. Essas operações dependem dos contratos oficiais de cada plataforma.
+
 ### Publicar ofertas no único grupo autorizado
 
 O envio real exige PostgreSQL migrado, o seed de acesso e um worker separado. Execute `pnpm db:migrate` e `pnpm seed:access` no ambiente do banco do Ofertou. O seed mostra o `Workspace ID`; configure esse UUID como `EVOLUTION_WORKSPACE_ID` no app **e** no worker. Também configure `DATABASE_URL`, `EVOLUTION_API_URL`, `EVOLUTION_API_KEY` e `EVOLUTION_INSTANCE_NAME` nos dois serviços. O app ainda precisa de `EVOLUTION_SETUP_TOKEN` para liberar a operação protegida. Crie um segundo serviço no EasyPanel com o mesmo código/imagem, sem domínio público, e comando `pnpm worker:evolution`; não execute dois workers para a mesma operação sem planejar a capacidade.
