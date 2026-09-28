@@ -13,3 +13,4 @@
 @media(max-width:1100px){.affiliate-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.affiliate-heading{align-items:flex-start;flex-direction:column}.affiliate-grid{grid-template-columns:1fr}.secure-badge{white-space:normal}.affiliate-card header>div{align-items:flex-start;flex-direction:column}.affiliate-card footer{align-items:stretch;flex-direction:column}.affiliate-card footer a{min-height:44px;align-items:center}}
 @media(prefers-reduced-motion:reduce){.spin{animation:none}}
+.affiliate-card .button:disabled{background:#d8d4d2;border-color:#d8d4d2;color:#777;box-shadow:none;transform:none}.affiliate-save{display:grid;gap:5px}.affiliate-save small{max-width:170px;color:#9a5f43;font-size:9px;line-height:1.35}

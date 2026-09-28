@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Check, ExternalLink, KeyRound, LoaderCircle, Save, ShieldCheck, Store } from "lucide-react";
 
 type Provider = "aliexpress" | "amazon" | "awin" | "shopee" | "magalu" | "mercadolivre";
@@ -23,8 +23,9 @@ export function AffiliateIntegrations() {
   const [messages, setMessages] = useState<Record<string, string>>({});
   const [availability, setAvailability] = useState<"loading" | "ready" | "locked" | "unavailable">("loading");
 
-  useEffect(() => {
+  const loadStatus = useCallback(() => {
     let active = true;
+    setAvailability("loading");
     void fetch("/api/integrations/affiliates", { cache: "no-store" }).then(async response => {
       if (response.status === 401) throw new Error("locked");
       if (!response.ok) throw new Error("unavailable");
@@ -36,6 +37,13 @@ export function AffiliateIntegrations() {
     }).catch(error => { if (active) setAvailability(error instanceof Error && error.message === "locked" ? "locked" : "unavailable"); });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    let cancel = loadStatus();
+    const reload = () => { cancel(); cancel = loadStatus(); };
+    window.addEventListener("ofertou:setup-authorized", reload);
+    return () => { cancel(); window.removeEventListener("ofertou:setup-authorized", reload); };
+  }, [loadStatus]);
 
   function update(provider: string, key: string, value: string) {
     setValues(current => ({ ...current, [provider]: { ...current[provider], [key]: value } }));
@@ -71,7 +79,7 @@ export function AffiliateIntegrations() {
         {definition.fields.map(field => <label className="field" key={field.key}>{field.label}{field.optional && <small>Opcional</small>}{field.type === "textarea" ? <textarea rows={4} autoComplete="off" value={values[definition.provider]?.[field.key] ?? ""} onChange={event => update(definition.provider, field.key, event.target.value)} required={!field.optional}/> : <input type={field.type ?? "text"} autoComplete="off" value={values[definition.provider]?.[field.key] ?? ""} onChange={event => update(definition.provider, field.key, event.target.value)} required={!field.optional}/>} {field.hint && <span className="field-hint">{field.hint}</span>}</label>)}
         {messages[definition.provider] && <p className={`affiliate-feedback ${messages[definition.provider].includes("salvas") ? "success" : "error"}`} role="status">{messages[definition.provider]}</p>}
       </div>
-      <footer><button className="button primary" type="submit" disabled={availability !== "ready" || saving === definition.provider}>{saving === definition.provider ? <><LoaderCircle className="spin" size={16}/> Salvando...</> : <><Save size={16}/> Salvar</>}</button><a href={definition.helpUrl} target="_blank" rel="noreferrer">Ajuda oficial <ExternalLink size={14}/></a></footer>
+      <footer><div className="affiliate-save"><button className="button primary" type="submit" disabled={availability !== "ready" || saving === definition.provider}>{saving === definition.provider ? <><LoaderCircle className="spin" size={16}/> Salvando...</> : <><Save size={16}/> Salvar</>}</button>{availability === "locked" && <small>Libere o acesso no cartão do WhatsApp acima.</small>}{availability === "unavailable" && <small>Armazenamento seguro indisponível.</small>}{availability === "loading" && <small>Verificando acesso...</small>}</div><a href={definition.helpUrl} target="_blank" rel="noreferrer">Ajuda oficial <ExternalLink size={14}/></a></footer>
     </form>)}</div>
     <p className="affiliate-disclaimer">Salvar credenciais não confirma conexão com a plataforma nem ativa geração automática de links. Cada provedor será habilitado somente após implementação e validação do contrato oficial correspondente.</p>
   </section>;

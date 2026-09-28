@@ -60,7 +60,9 @@ export function EvolutionConnection() {
         setMessage(errors[response.status] ?? `Não foi possível acessar a conexão (HTTP ${response.status}).`);
         return;
       }
-      setToken(""); await refresh();
+      setToken("");
+      window.dispatchEvent(new Event("ofertou:setup-authorized"));
+      await refresh();
     } catch { setMode("locked"); setMessage("Falha ao acessar o servidor."); }
   }
 
