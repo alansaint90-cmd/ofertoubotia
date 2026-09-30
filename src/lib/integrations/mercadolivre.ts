@@ -13,6 +13,20 @@ function configuration() {
   return { clientId, clientSecret, redirectUri };
 }
 
+export async function refreshMercadoLivreToken(refreshToken: string) {
+  const { clientId, clientSecret } = configuration();
+  const response = await fetch("https://api.mercadolibre.com/oauth/token", {
+    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "refresh_token", client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken }),
+    cache: "no-store", redirect: "error", signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok) throw new Error("reconnect_required");
+  const data: unknown = await response.json();
+  const { z } = await import("zod");
+  const token = z.object({ access_token: z.string().min(1), refresh_token: z.string().min(1), expires_in: z.number().positive().finite(), user_id: z.union([z.number(), z.string()]).optional() }).parse(data);
+  return { accessToken: token.access_token, refreshToken: token.refresh_token, expiresAt: new Date(Date.now() + token.expires_in * 1000).toISOString(), userId: token.user_id === undefined ? undefined : String(token.user_id) };
+}
+
 export function mercadoLivreReady() {
   try { configuration(); return true; } catch { return false; }
 }

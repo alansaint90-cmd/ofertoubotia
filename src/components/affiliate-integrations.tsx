@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { MercadoLivreProducts } from "@/components/mercadolivre-products";
 import { Check, ExternalLink, KeyRound, Link2, LoaderCircle, Save, ShieldCheck, Store } from "lucide-react";
 
 type Provider = "aliexpress" | "amazon" | "awin" | "shopee" | "magalu" | "mercadolivre";
@@ -118,5 +119,6 @@ export function AffiliateIntegrations() {
       <footer><div className="affiliate-save">{definition.provider === "mercadolivre" ? <button className="button primary" type="button" onClick={() => void connectMercadoLivre()} disabled={availability !== "ready" || saving === definition.provider}>{saving === definition.provider ? <><LoaderCircle className="spin" size={16}/> Redirecionando...</> : <><Link2 size={16}/> {connected.has("mercadolivre") ? "Reconectar" : "Conectar conta"}</>}</button> : <button className="button primary" type="submit" disabled={availability !== "ready" || saving === definition.provider}>{saving === definition.provider ? <><LoaderCircle className="spin" size={16}/> Salvando...</> : <><Save size={16}/> Salvar</>}</button>}{availability === "locked" && <small>Libere o acesso no cartão do WhatsApp acima.</small>}{availability === "unavailable" && <small>Armazenamento seguro indisponível.</small>}{availability === "loading" && <small>Verificando acesso...</small>}</div><a href={definition.helpUrl} target="_blank" rel="noreferrer">Ajuda oficial <ExternalLink size={14}/></a></footer>
     </form>)}</div>
     <p className="affiliate-disclaimer">Salvar credenciais não confirma conexão com a plataforma nem ativa geração automática de links. Cada provedor será habilitado somente após implementação e validação do contrato oficial correspondente.</p>
+    <MercadoLivreProducts/>
   </section>;
 }
