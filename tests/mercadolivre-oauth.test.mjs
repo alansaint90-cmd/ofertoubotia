@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { authorizationUrl, createOAuthState, verifyOAuthState } from "../src/lib/integrations/mercadolivre.ts";
+import { authorizationUrl, createOAuthState, integrationReturnUrl, verifyOAuthState } from "../src/lib/integrations/mercadolivre.ts";
 
 const original = {
   clientId: process.env.MERCADO_LIVRE_CLIENT_ID,
@@ -40,4 +40,9 @@ test("URL de autorização usa somente os parâmetros oficiais configurados", ()
   assert.equal(url.searchParams.get("client_id"), "123456789");
   assert.equal(url.searchParams.get("redirect_uri"), process.env.MERCADO_LIVRE_REDIRECT_URI);
   assert.equal(url.searchParams.get("state"), state);
+});
+
+test("retorno nunca usa o host interno do container", () => {
+  assert.equal(integrationReturnUrl("conectado").toString(), "https://ofertou.example/integrations?mercadolivre=conectado");
+  assert.equal(integrationReturnUrl("erro").toString(), "https://ofertou.example/integrations?mercadolivre=erro");
 });

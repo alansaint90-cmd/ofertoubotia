@@ -3,22 +3,20 @@ import { cookies } from "next/headers";
 import { affiliateIntegrations, auditLogs } from "@/lib/db/schema";
 import { setupActor } from "@/lib/db/runtime";
 import { credentialsEncryptionReady, encryptCredentials } from "@/lib/integrations/credentials";
-import { exchangeAuthorizationCode, ML_STATE_COOKIE, verifyOAuthState } from "@/lib/integrations/mercadolivre";
+import { exchangeAuthorizationCode, integrationReturnUrl, ML_STATE_COOKIE, verifyOAuthState } from "@/lib/integrations/mercadolivre";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function back(request: Request, result: string) {
-  const url = new URL("/integrations", request.url);
-  url.searchParams.set("mercadolivre", result);
-  return Response.redirect(url, 303);
+function back(result: "conectado" | "erro") {
+  return Response.redirect(integrationReturnUrl(result), 303);
 }
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code")?.trim();
   const state = url.searchParams.get("state")?.trim();
-  if (!code || code.length > 2000 || !state || state.length > 2000 || !credentialsEncryptionReady()) return back(request, "erro");
+  if (!code || code.length > 2000 || !state || state.length > 2000 || !credentialsEncryptionReady()) return back("erro");
   const jar = await cookies();
   try {
     const stateWorkspaceId = verifyOAuthState(state, jar.get(ML_STATE_COOKIE)?.value);
@@ -42,9 +40,9 @@ export async function GET(request: Request) {
       await tx.insert(auditLogs).values({ workspaceId, actorId, operation: "affiliate_integration.oauth_connected", entityType: "affiliate_integration", entityId, metadata: { provider: "mercadolivre" }, modifiedBy: actorId });
     });
     jar.delete(ML_STATE_COOKIE);
-    return back(request, "conectado");
+    return back("conectado");
   } catch {
     jar.delete(ML_STATE_COOKIE);
-    return back(request, "erro");
+    return back("erro");
   }
 }

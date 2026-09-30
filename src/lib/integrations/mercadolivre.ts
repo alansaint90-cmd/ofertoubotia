@@ -49,6 +49,13 @@ export function authorizationUrl(state: string) {
   return url;
 }
 
+export function integrationReturnUrl(result: "conectado" | "erro") {
+  const { redirectUri } = configuration();
+  const url = new URL("/integrations", redirectUri);
+  url.searchParams.set("mercadolivre", result);
+  return url;
+}
+
 export async function exchangeAuthorizationCode(code: string) {
   const { clientId, clientSecret, redirectUri } = configuration();
   const response = await fetch("https://api.mercadolibre.com/oauth/token", {
