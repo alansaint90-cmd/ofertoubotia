@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 const AUTHORIZATION_URL = "https://auth.mercadolivre.com.br/authorization";
 export const ML_STATE_COOKIE = "ofertou_ml_oauth";
@@ -46,7 +46,14 @@ export function authorizationUrl(state: string) {
   url.searchParams.set("client_id", clientId);
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("state", state);
+  url.searchParams.set("code_challenge", createHash("sha256").update(codeVerifier(state)).digest("base64url"));
+  url.searchParams.set("code_challenge_method", "S256");
   return url;
+}
+
+// Domain-separated HMAC keeps the verifier private while binding it to this attempt.
+function codeVerifier(state: string) {
+  return createHmac("sha256", configuration().clientSecret).update(`ofertou:ml:pkce:${state}`).digest("base64url");
 }
 
 export type MercadoLivreOAuthError = "autorizacao_recusada" | "estado_invalido" | "workspace_invalido" | "troca_token_falhou" | "gravacao_falhou" | "configuracao_invalida";
@@ -59,16 +66,25 @@ export function integrationReturnUrl(result: "conectado" | "erro", reason?: Merc
   return url;
 }
 
-export async function exchangeAuthorizationCode(code: string) {
+export async function exchangeAuthorizationCode(code: string, state: string) {
   const { clientId, clientSecret, redirectUri } = configuration();
   const response = await fetch("https://api.mercadolibre.com/oauth/token", {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ grant_type: "authorization_code", client_id: clientId, client_secret: clientSecret, code, redirect_uri: redirectUri }),
+    body: new URLSearchParams({ grant_type: "authorization_code", client_id: clientId, client_secret: clientSecret, code, redirect_uri: redirectUri, code_verifier: codeVerifier(state) }),
     cache: "no-store",
+    signal: AbortSignal.timeout(15000),
+    redirect: "error",
   });
-  const body: unknown = await response.json();
-  if (!response.ok || !body || typeof body !== "object") throw new Error("oauth_exchange_failed");
+  const body: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    const knownErrors = ["invalid_client", "invalid_grant", "invalid_scope", "invalid_request", "unsupported_grant_type", "forbidden", "local_rate_limited", "unauthorized_client", "unauthorized_application"];
+    const reported = body && typeof body === "object" && "error" in body ? body.error : undefined;
+    const safeError = typeof reported === "string" && knownErrors.includes(reported) ? reported : "unknown_error";
+    console.error("mercadolivre.oauth.exchange_failed", { status: response.status, error: safeError });
+    throw new Error("oauth_exchange_failed");
+  }
+  if (!body || typeof body !== "object") throw new Error("oauth_response_invalid");
   const token = body as Record<string, unknown>;
   if (typeof token.access_token !== "string" || typeof token.refresh_token !== "string" || typeof token.expires_in !== "number") throw new Error("oauth_response_invalid");
   return {

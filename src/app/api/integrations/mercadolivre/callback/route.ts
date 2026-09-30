@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const { db, workspaceId, actorId } = await setupActor("integrations:manage");
     if (workspaceId !== stateWorkspaceId) throw new Error("workspace_mismatch");
     stage = "troca_token_falhou";
-    const tokens = await exchangeAuthorizationCode(code);
+    const tokens = await exchangeAuthorizationCode(code, state);
     stage = "gravacao_falhou";
     await db.transaction(async tx => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${workspaceId}), hashtext('mercadolivre'))`);
