@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, ExternalLink, KeyRound, LoaderCircle, Save, ShieldCheck, Store } from "lucide-react";
+import { Check, ExternalLink, KeyRound, Link2, LoaderCircle, Save, ShieldCheck, Store } from "lucide-react";
 
 type Provider = "aliexpress" | "amazon" | "awin" | "shopee" | "magalu" | "mercadolivre";
 type Field = { key: string; label: string; type?: "password" | "url" | "textarea"; optional?: boolean; hint?: string };
@@ -13,11 +13,12 @@ const definitions: Definition[] = [
   { provider: "awin", name: "AWIN", mark: "AW", tone: "navy", helpUrl: "https://ui.awin.com/", fields: [{ key: "affiliateId", label: "Afiliado ID" }, { key: "apiToken", label: "API Token", type: "password" }] },
   { provider: "shopee", name: "Shopee", mark: "S", tone: "orange", helpUrl: "https://affiliate.shopee.com.br/", note: "Se sua conta não tiver senha de API, informe apenas o ID de afiliado.", fields: [{ key: "affiliateId", label: "ID de afiliado" }, { key: "apiPassword", label: "Senha API", type: "password", optional: true }] },
   { provider: "magalu", name: "Magalu", mark: "M", tone: "blue", helpUrl: "https://www.magazinevoce.com.br/", fields: [{ key: "storeName", label: "Nome da loja" }] },
-  { provider: "mercadolivre", name: "Mercado Livre", mark: "ML", tone: "yellow", helpUrl: "https://www.mercadolivre.com.br/afiliados", note: "Use somente dados da sua própria conta. Cookies podem expirar e precisar de atualização.", fields: [{ key: "affiliateLink", label: "Link de afiliado", type: "url", hint: "URL completa iniciada por https://" }, { key: "cookie", label: "Cookie do Mercado Livre", type: "textarea" }] },
+  { provider: "mercadolivre", name: "Mercado Livre", mark: "ML", tone: "yellow", helpUrl: "https://developers.mercadolivre.com.br/", note: "Conecte sua conta pelo acesso oficial do Mercado Livre. As credenciais do aplicativo permanecem somente no servidor.", fields: [] },
 ];
 
 export function AffiliateIntegrations() {
   const [configured, setConfigured] = useState<Set<string>>(new Set());
+  const [connected, setConnected] = useState<Set<string>>(new Set());
   const [values, setValues] = useState<Record<string, Record<string, string>>>({});
   const [saving, setSaving] = useState("");
   const [messages, setMessages] = useState<Record<string, string>>({});
@@ -32,7 +33,8 @@ export function AffiliateIntegrations() {
       return response.json() as Promise<{ integrations: { provider: string; status: string }[]; encryptionReady: boolean }>;
     }).then(result => {
       if (!active) return;
-      setConfigured(new Set(result.integrations.filter(item => item.status === "configured").map(item => item.provider)));
+      setConfigured(new Set(result.integrations.filter(item => ["configured", "connected"].includes(item.status)).map(item => item.provider)));
+      setConnected(new Set(result.integrations.filter(item => item.status === "connected").map(item => item.provider)));
       setAvailability(result.encryptionReady ? "ready" : "unavailable");
     }).catch(error => { if (active) setAvailability(error instanceof Error && error.message === "locked" ? "locked" : "unavailable"); });
     return () => { active = false; };
@@ -69,17 +71,34 @@ export function AffiliateIntegrations() {
     } finally { setSaving(""); }
   }
 
+  async function connectMercadoLivre() {
+    setSaving("mercadolivre");
+    setMessages(current => ({ ...current, mercadolivre: "" }));
+    try {
+      const response = await fetch("/api/integrations/mercadolivre/authorize", { method: "POST" });
+      const result = await response.json() as { authorizationUrl?: string; error?: string };
+      if (!response.ok || !result.authorizationUrl) {
+        const errors: Record<string, string> = { unauthorized: "Acesse primeiro a conexão protegida do WhatsApp.", forbidden: "Origem do site recusada.", not_configured: "As credenciais do Mercado Livre não estão completas no servidor." };
+        throw new Error(errors[result.error ?? ""] ?? "Não foi possível iniciar a conexão.");
+      }
+      window.location.assign(result.authorizationUrl);
+    } catch (error) {
+      setMessages(current => ({ ...current, mercadolivre: error instanceof Error ? error.message : "Falha ao acessar o servidor." }));
+      setSaving("");
+    }
+  }
+
   return <section className="affiliate-section" aria-labelledby="affiliate-title">
     <div className="affiliate-heading"><div><span className="tiny-label">PROGRAMAS DE AFILIADOS</span><h2 id="affiliate-title">Credenciais das plataformas</h2><p>Salve os acessos oficiais para preparar as próximas integrações de produtos e links.</p></div><span className="secure-badge"><ShieldCheck size={16}/> Criptografia no servidor</span></div>
     {availability === "locked" && <div className="affiliate-warning" role="alert"><KeyRound size={18}/><div><strong>Acesso protegido necessário</strong><p>Use a chave de configuração no cartão do WhatsApp para liberar o gerenciamento das integrações.</p></div></div>}
     {availability === "unavailable" && <div className="affiliate-warning" role="alert"><KeyRound size={18}/><div><strong>Armazenamento seguro indisponível</strong><p>Configure <code>INTEGRATIONS_ENCRYPTION_KEY</code> no serviço Ofertou e acesse novamente a conexão protegida.</p></div></div>}
     <div className="affiliate-grid">{definitions.map(definition => <form className="affiliate-card" key={definition.provider} onSubmit={event => void save(definition, event)}>
-      <header><span className={`affiliate-mark ${definition.tone}`} aria-hidden="true">{definition.mark}</span><div><h3>Afiliados {definition.name}</h3><span className={`integration-state ${configured.has(definition.provider) ? "configured" : ""}`}>{configured.has(definition.provider) ? <><Check size={12}/> Configurado</> : "Não configurado"}</span></div></header>
+      <header><span className={`affiliate-mark ${definition.tone}`} aria-hidden="true">{definition.mark}</span><div><h3>Afiliados {definition.name}</h3><span className={`integration-state ${configured.has(definition.provider) ? "configured" : ""}`}>{connected.has(definition.provider) ? <><Check size={12}/> Conectado</> : configured.has(definition.provider) ? <><Check size={12}/> Configurado</> : "Não configurado"}</span></div></header>
       <div className="affiliate-card-body">{definition.note && <div className="provider-note"><Store size={17}/><span>{definition.note}</span></div>}
         {definition.fields.map(field => <label className="field" key={field.key}>{field.label}{field.optional && <small>Opcional</small>}{field.type === "textarea" ? <textarea rows={4} autoComplete="off" value={values[definition.provider]?.[field.key] ?? ""} onChange={event => update(definition.provider, field.key, event.target.value)} required={!field.optional}/> : <input type={field.type ?? "text"} autoComplete="off" value={values[definition.provider]?.[field.key] ?? ""} onChange={event => update(definition.provider, field.key, event.target.value)} required={!field.optional}/>} {field.hint && <span className="field-hint">{field.hint}</span>}</label>)}
         {messages[definition.provider] && <p className={`affiliate-feedback ${messages[definition.provider].includes("salvas") ? "success" : "error"}`} role="status">{messages[definition.provider]}</p>}
       </div>
-      <footer><div className="affiliate-save"><button className="button primary" type="submit" disabled={availability !== "ready" || saving === definition.provider}>{saving === definition.provider ? <><LoaderCircle className="spin" size={16}/> Salvando...</> : <><Save size={16}/> Salvar</>}</button>{availability === "locked" && <small>Libere o acesso no cartão do WhatsApp acima.</small>}{availability === "unavailable" && <small>Armazenamento seguro indisponível.</small>}{availability === "loading" && <small>Verificando acesso...</small>}</div><a href={definition.helpUrl} target="_blank" rel="noreferrer">Ajuda oficial <ExternalLink size={14}/></a></footer>
+      <footer><div className="affiliate-save">{definition.provider === "mercadolivre" ? <button className="button primary" type="button" onClick={() => void connectMercadoLivre()} disabled={availability !== "ready" || saving === definition.provider}>{saving === definition.provider ? <><LoaderCircle className="spin" size={16}/> Redirecionando...</> : <><Link2 size={16}/> {connected.has("mercadolivre") ? "Reconectar" : "Conectar conta"}</>}</button> : <button className="button primary" type="submit" disabled={availability !== "ready" || saving === definition.provider}>{saving === definition.provider ? <><LoaderCircle className="spin" size={16}/> Salvando...</> : <><Save size={16}/> Salvar</>}</button>}{availability === "locked" && <small>Libere o acesso no cartão do WhatsApp acima.</small>}{availability === "unavailable" && <small>Armazenamento seguro indisponível.</small>}{availability === "loading" && <small>Verificando acesso...</small>}</div><a href={definition.helpUrl} target="_blank" rel="noreferrer">Ajuda oficial <ExternalLink size={14}/></a></footer>
     </form>)}</div>
     <p className="affiliate-disclaimer">Salvar credenciais não confirma conexão com a plataforma nem ativa geração automática de links. Cada provedor será habilitado somente após implementação e validação do contrato oficial correspondente.</p>
   </section>;

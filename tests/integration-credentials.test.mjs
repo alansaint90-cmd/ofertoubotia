@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, test } from "node:test";
-import { credentialsEncryptionReady, encryptCredentials } from "../src/lib/integrations/credentials.ts";
+import { credentialsEncryptionReady, decryptCredentials, encryptCredentials } from "../src/lib/integrations/credentials.ts";
 
 const original = process.env.INTEGRATIONS_ENCRYPTION_KEY;
 after(() => {
@@ -18,4 +18,5 @@ test("credenciais exigem chave de 32 bytes e produzem cifra autenticada", () => 
   assert.match(first, /^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
   assert.notEqual(first, second);
   assert.equal(first.includes("segredo-de-teste"), false);
+  assert.deepEqual(decryptCredentials(first), { apiToken: "segredo-de-teste" });
 });

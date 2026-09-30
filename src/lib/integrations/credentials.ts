@@ -1,4 +1,4 @@
-import { createCipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
 const VERSION = "v1";
 
@@ -20,4 +20,15 @@ export function encryptCredentials(value: Record<string, string>): string {
   const encrypted = Buffer.concat([cipher.update(JSON.stringify(value), "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   return [VERSION, iv.toString("base64url"), tag.toString("base64url"), encrypted.toString("base64url")].join(".");
+}
+
+export function decryptCredentials(value: string): Record<string, string> {
+  const [version, ivValue, tagValue, encryptedValue, ...extra] = value.split(".");
+  if (version !== VERSION || !ivValue || !tagValue || !encryptedValue || extra.length) throw new Error("encrypted_credentials_invalid");
+  const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), Buffer.from(ivValue, "base64url"));
+  decipher.setAuthTag(Buffer.from(tagValue, "base64url"));
+  const clear = Buffer.concat([decipher.update(Buffer.from(encryptedValue, "base64url")), decipher.final()]).toString("utf8");
+  const parsed: unknown = JSON.parse(clear);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("encrypted_credentials_invalid");
+  return Object.fromEntries(Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
 }
