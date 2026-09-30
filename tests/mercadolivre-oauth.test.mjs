@@ -44,5 +44,5 @@ test("URL de autorização usa somente os parâmetros oficiais configurados", ()
 
 test("retorno nunca usa o host interno do container", () => {
   assert.equal(integrationReturnUrl("conectado").toString(), "https://ofertou.example/integrations?mercadolivre=conectado");
-  assert.equal(integrationReturnUrl("erro").toString(), "https://ofertou.example/integrations?mercadolivre=erro");
+  assert.equal(integrationReturnUrl("erro", "troca_token_falhou").toString(), "https://ofertou.example/integrations?mercadolivre=erro&motivo=troca_token_falhou");
 });

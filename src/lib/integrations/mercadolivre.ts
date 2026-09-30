@@ -49,10 +49,13 @@ export function authorizationUrl(state: string) {
   return url;
 }
 
-export function integrationReturnUrl(result: "conectado" | "erro") {
+export type MercadoLivreOAuthError = "autorizacao_recusada" | "estado_invalido" | "workspace_invalido" | "troca_token_falhou" | "gravacao_falhou" | "configuracao_invalida";
+
+export function integrationReturnUrl(result: "conectado" | "erro", reason?: MercadoLivreOAuthError) {
   const { redirectUri } = configuration();
   const url = new URL("/integrations", redirectUri);
   url.searchParams.set("mercadolivre", result);
+  if (result === "erro" && reason) url.searchParams.set("motivo", reason);
   return url;
 }
 

@@ -24,6 +24,23 @@ export function AffiliateIntegrations() {
   const [messages, setMessages] = useState<Record<string, string>>({});
   const [availability, setAvailability] = useState<"loading" | "ready" | "locked" | "unavailable">("loading");
 
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const result = query.get("mercadolivre");
+    if (result === "conectado") setMessages(current => ({ ...current, mercadolivre: "Conta do Mercado Livre conectada com segurança." }));
+    if (result === "erro") {
+      const reasons: Record<string, string> = {
+        autorizacao_recusada: "A autorização foi cancelada ou recusada no Mercado Livre.",
+        estado_invalido: "A sessão de conexão expirou. Clique em Conectar conta novamente.",
+        workspace_invalido: "Não foi possível validar o espaço de trabalho.",
+        troca_token_falhou: "O Mercado Livre recusou a troca do código. Confira Client ID, Client Secret e a URL de retorno.",
+        gravacao_falhou: "A autorização ocorreu, mas não foi possível gravar a conexão no banco.",
+        configuracao_invalida: "A criptografia da integração não está configurada corretamente.",
+      };
+      setMessages(current => ({ ...current, mercadolivre: reasons[query.get("motivo") ?? ""] ?? "Não foi possível concluir a conexão com o Mercado Livre." }));
+    }
+  }, []);
+
   const loadStatus = useCallback(() => {
     let active = true;
     setAvailability("loading");
@@ -96,7 +113,7 @@ export function AffiliateIntegrations() {
       <header><span className={`affiliate-mark ${definition.tone}`} aria-hidden="true">{definition.mark}</span><div><h3>Afiliados {definition.name}</h3><span className={`integration-state ${configured.has(definition.provider) ? "configured" : ""}`}>{connected.has(definition.provider) ? <><Check size={12}/> Conectado</> : configured.has(definition.provider) ? <><Check size={12}/> Configurado</> : "Não configurado"}</span></div></header>
       <div className="affiliate-card-body">{definition.note && <div className="provider-note"><Store size={17}/><span>{definition.note}</span></div>}
         {definition.fields.map(field => <label className="field" key={field.key}>{field.label}{field.optional && <small>Opcional</small>}{field.type === "textarea" ? <textarea rows={4} autoComplete="off" value={values[definition.provider]?.[field.key] ?? ""} onChange={event => update(definition.provider, field.key, event.target.value)} required={!field.optional}/> : <input type={field.type ?? "text"} autoComplete="off" value={values[definition.provider]?.[field.key] ?? ""} onChange={event => update(definition.provider, field.key, event.target.value)} required={!field.optional}/>} {field.hint && <span className="field-hint">{field.hint}</span>}</label>)}
-        {messages[definition.provider] && <p className={`affiliate-feedback ${messages[definition.provider].includes("salvas") ? "success" : "error"}`} role="status">{messages[definition.provider]}</p>}
+        {messages[definition.provider] && <p className={`affiliate-feedback ${messages[definition.provider].includes("salvas") || messages[definition.provider].includes("conectada com segurança") ? "success" : "error"}`} role="status">{messages[definition.provider]}</p>}
       </div>
       <footer><div className="affiliate-save">{definition.provider === "mercadolivre" ? <button className="button primary" type="button" onClick={() => void connectMercadoLivre()} disabled={availability !== "ready" || saving === definition.provider}>{saving === definition.provider ? <><LoaderCircle className="spin" size={16}/> Redirecionando...</> : <><Link2 size={16}/> {connected.has("mercadolivre") ? "Reconectar" : "Conectar conta"}</>}</button> : <button className="button primary" type="submit" disabled={availability !== "ready" || saving === definition.provider}>{saving === definition.provider ? <><LoaderCircle className="spin" size={16}/> Salvando...</> : <><Save size={16}/> Salvar</>}</button>}{availability === "locked" && <small>Libere o acesso no cartão do WhatsApp acima.</small>}{availability === "unavailable" && <small>Armazenamento seguro indisponível.</small>}{availability === "loading" && <small>Verificando acesso...</small>}</div><a href={definition.helpUrl} target="_blank" rel="noreferrer">Ajuda oficial <ExternalLink size={14}/></a></footer>
     </form>)}</div>
