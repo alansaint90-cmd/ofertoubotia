@@ -2,6 +2,8 @@
 
 ## Identificação e prévia
 
+Páginas `/social/` agora são consultadas: o importador segue um único link com o texto **Ir para produto**, ignorando recomendações. Se houver mais de um destino, nenhum é escolhido. O ID MLB já cadastrado tem prioridade sobre a resolução do link. O link de afiliado original é preservado. Erros de acesso à API, limite de consultas e destaque ausente têm mensagens distintas. Esta melhoria não exige nova migração além da 0005. A consulta HTTP do exemplo meli.la/23PhNuW não entregou o conteúdo completo neste ambiente; a identificação em produção ainda precisa ser validada. Não há execução de JavaScript nem contorno de bloqueios.
+
 Aplique a migração 0005 com `pnpm db:migrate`. Em cada produto salvo, use **Identificar pelo link**. O servidor segue até cinco etapas de redirecionamento HTTPS nos hosts oficiais permitidos, sem cookies nem credenciais OAuth, com conexão fixada ao IPv4 público validado, limite de tamanho e timeout. Identifica anúncios em URLs diretas, parâmetros item_id/wid ou URL canônica. Não escolhe produtos recomendados em vitrines nem confunde identificadores de catálogo com anúncios.
 
 Quando identificado, consulta o anúncio na API com renovação de token, grava título, preço em BRL, foto e estado do anúncio. A prévia exige revisão. Falhas, vitrines, páginas dependentes de JavaScript e bloqueios da plataforma levam ao preenchimento manual, sem contornar os bloqueios.

@@ -59,15 +59,24 @@ export async function POST(request: Request) {
       let resolvedId = row.itemId;
       if (data.action === "resolve") {
         try {
-          resolvedId = await resolveProductLink(row.affiliateUrl, itemFromProductUrl);
+          resolvedId = row.itemId ?? await resolveProductLink(row.affiliateUrl, itemFromProductUrl);
           let tokens = await liveMercadoLivreToken(owner);
           let raw: unknown;
           try { raw = await mlGet(`/items/${resolvedId}`, tokens.accessToken); }
           catch (error) { if (!(error instanceof Error) || error.message !== "token_rejected") throw error; tokens = await liveMercadoLivreToken(owner, tokens.accessToken); raw = await mlGet(`/items/${resolvedId}`, tokens.accessToken); }
           const product = z.object({ id: z.literal(resolvedId), title: z.string().min(1).max(200), price: z.number().positive().nullable(), currency_id: z.literal("BRL"), status: z.string(), pictures: z.array(z.object({ secure_url: z.string() })).default([]) }).parse(raw);
           details = { title: product.title, price: product.price, imageUrl: product.pictures.map(p => p.secure_url).find(safeProductImage) ?? "", description: "", source: "api", reviewedAt: null, checkedAt: new Date().toISOString(), status: product.status };
-        } catch {
-          return reply({ error: "Não foi possível identificar ou consultar este produto. Links de vitrine, páginas bloqueadas e anúncios sem acesso pela API exigem preenchimento manual. Informe título, preço e foto e revise a prévia.", manual: true }, 422);
+        } catch (error) {
+          const messages: Record<string, string> = {
+            featured_product_missing: "A página não apresentou um único botão Ir para produto. Não foi selecionado nenhum produto recomendado.",
+            link_unavailable: "O Mercado Livre não disponibilizou a página ao servidor. Tente novamente ou informe o ID MLB do anúncio.",
+            identification_pending: "O destino foi aberto, mas não contém o ID de um anúncio. Informe o ID MLB do anúncio para consultar a API.",
+            permission_denied: "O anúncio foi identificado, mas a API do Mercado Livre recusou o acesso aos dados (403).",
+            not_found: "O anúncio identificado não foi encontrado na API do Mercado Livre.",
+            rate_limited: "O Mercado Livre limitou as consultas. Aguarde e tente novamente.",
+            token_rejected: "A API recusou a autorização. Reconecte a conta do Mercado Livre.",
+          };
+          return reply({ error: messages[error instanceof Error ? error.message : ""] ?? "A consulta automática não foi concluída. Tente novamente; se persistir, confira a conexão do Mercado Livre e o ID do anúncio.", manual: true }, 422);
         }
       } else {
         details = { title: data.details.title, price: data.details.price, imageUrl: data.details.imageUrl, description: data.details.description, source: "manual", reviewedAt: new Date().toISOString(), checkedAt: new Date().toISOString() };

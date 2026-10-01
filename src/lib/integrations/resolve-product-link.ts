@@ -11,6 +11,20 @@ export function allowedProductUrl(value: string) {
 }
 export function publicProductAddress(ip: string) { return !blocked.check(ip, "ipv4"); }
 
+export function highlightedProductUrl(html: string, base: URL) {
+  // Only the explicit featured-product action, never recommendation links.
+  const links = new Set<string>();
+  const visible = html.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, "");
+  for (const match of visible.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
+    const label = match[2].replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+    if (label !== "Ir para produto") continue;
+    const href = match[1].match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1];
+    if (href) links.add(allowedProductUrl(new URL(href.replace(/&amp;/g, "&"), base).href).href);
+  }
+  if (links.size !== 1) throw new Error("featured_product_missing");
+  return allowedProductUrl([...links][0]);
+}
+
 async function readPage(url: URL): Promise<{ status: number; location?: string; html: string }> {
   // Pin the validated IPv4 address to this connection; never send OAuth headers to links.
   const addresses = await lookup(url.hostname, { family: 4, all: true });
@@ -37,10 +51,13 @@ export async function resolveProductLink(link: string, extract: (url: string) =>
     visited.add(url.href);
     const id = extract(url.href);
     if (id) return id;
-    if (url.pathname.startsWith("/social/")) throw new Error("showcase_link");
     const response = await read(url);
     if (response.status >= 300 && response.status < 400 && response.location) { url = allowedProductUrl(new URL(response.location, url).href); continue; }
     if (response.status !== 200) throw new Error("link_unavailable");
+    if (url.pathname.startsWith("/social/")) {
+      url = highlightedProductUrl(response.html, url);
+      continue;
+    }
     // Only canonical product identity; never guess from recommended products in the page.
     const tag = response.html.match(/<link\b[^>]*\brel=["']canonical["'][^>]*>/i)?.[0];
     const href = tag?.match(/\bhref=["']([^"']+)["']/i)?.[1];
