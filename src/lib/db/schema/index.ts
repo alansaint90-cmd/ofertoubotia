@@ -66,7 +66,8 @@ export const affiliateIntegrations = pgTable("affiliate_integrations", {
 export const productCollection = pgTable("product_collection", {
   id: uuid("id").primaryKey().defaultRandom(),
   workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "restrict", onUpdate: "restrict" }),
-  itemId: text("item_id").notNull(),
+  itemId: text("item_id"),
+  referenceCode: text("reference_code").notNull().default(""),
   affiliateUrl: text("affiliate_url").notNull(),
   title: text("title").notNull().default(""),
   isActive: boolean("is_active").notNull().default(true),

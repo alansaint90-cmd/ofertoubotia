@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { cookies } from "next/headers";
-import { and, eq, sql, desc } from "drizzle-orm";
+import { and, or, ne, eq, sql, desc } from "drizzle-orm";
 import { z } from "zod";
 import { setupActor } from "@/lib/db/runtime";
 import { productCollection, auditLogs } from "@/lib/db/schema";
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
         const entries = data.action === "add" ? data.entries : rows!.map(row => row.data!);
         let added = 0; let skipped = 0;
         for (const entry of entries) {
-          const [existing] = await tx.select({ id: productCollection.id }).from(productCollection).where(and(eq(productCollection.workspaceId, workspaceId), eq(productCollection.itemId, entry.itemId), eq(productCollection.isDeleted, false))).limit(1);
+          const [existing] = await tx.select({ id: productCollection.id }).from(productCollection).where(and(eq(productCollection.workspaceId, workspaceId), or(entry.itemId ? eq(productCollection.itemId, entry.itemId) : undefined, eq(productCollection.affiliateUrl, entry.affiliateUrl)), eq(productCollection.isDeleted, false))).limit(1);
           if (existing) { skipped++; continue; }
           const [created] = await tx.insert(productCollection).values({ ...entry, workspaceId, modifiedBy: actorId }).returning({ id: productCollection.id });
           await audit(created.id, "collection.created"); added++;
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
         return { added, skipped };
       }
       if (data.action === "edit") {
-        const [duplicate] = await tx.select({ id: productCollection.id }).from(productCollection).where(and(eq(productCollection.workspaceId, workspaceId), eq(productCollection.itemId, data.entry.itemId), eq(productCollection.isDeleted, false))).limit(1);
+        const [duplicate] = await tx.select({ id: productCollection.id }).from(productCollection).where(and(ne(productCollection.id, data.id), eq(productCollection.workspaceId, workspaceId), or(data.entry.itemId ? eq(productCollection.itemId, data.entry.itemId) : undefined, eq(productCollection.affiliateUrl, data.entry.affiliateUrl)), eq(productCollection.isDeleted, false))).limit(1);
         if (duplicate && duplicate.id !== data.id) return { error: "Este anúncio já está na coleção." };
       }
       const [changed] = await tx.update(productCollection).set({ ...(data.action === "edit" ? data.entry : data.action === "toggle" ? { isActive: data.active } : { isDeleted: true, deletedAt: new Date(), isActive: false }), updatedAt: new Date(), modifiedBy: actorId }).where(filter(data.id)).returning({ id: productCollection.id });

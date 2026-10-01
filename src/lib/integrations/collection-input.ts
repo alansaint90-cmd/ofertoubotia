@@ -9,11 +9,11 @@ export const collectionEntry = z.object({
     try { url = new URL(value); } catch { return false; }
     return url.protocol === "https:" && !url.username && !url.password && !url.port && (url.hostname === "meli.la" || url.hostname === "mercadolivre.com.br" || url.hostname.endsWith(".mercadolivre.com.br"));
   }, "Use um link HTTPS do Mercado Livre ou meli.la."),
-  itemId: z.string().trim().toUpperCase().transform(value => value.replace(/^MLB-/, "MLB")).default(""),
+  itemId: z.string().trim().max(100).toUpperCase().transform(value => value.replace(/^MLB-/, "MLB")).default(""),
   title: z.string().trim().max(200).default(""),
-}).transform(data => ({ ...data, itemId: data.itemId || identifyItem(data.affiliateUrl) || "" }))
+}).transform(data => ({ ...data, referenceCode: data.itemId && !/^MLB\d{6,20}$/.test(data.itemId) ? data.itemId : "", itemId: /^MLB\d{6,20}$/.test(data.itemId) ? data.itemId : identifyItem(data.affiliateUrl) ?? null }))
   .superRefine((data, ctx) => {
-    if (!/^MLB\d{6,20}$/.test(data.itemId)) ctx.addIssue({ code: "custom", path: ["itemId"], message: "Informe o ID MLB do anúncio; este link não permite identificá-lo." });
+    if (data.referenceCode && !/^[A-Z0-9-]{1,100}$/.test(data.referenceCode)) ctx.addIssue({ code: "custom", path: ["itemId"], message: "Use letras, números e hífen no código de referência." });
     const inferred = identifyItem(data.affiliateUrl);
     if (inferred && inferred !== data.itemId) ctx.addIssue({ code: "custom", path: ["itemId"], message: "O ID informado difere do anúncio no link." });
   });

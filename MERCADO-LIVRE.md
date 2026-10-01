@@ -4,9 +4,9 @@
 
 Após atualizar, execute `pnpm db:migrate` no serviço para criar `product_collection`. Libere novamente a chave de produtos em Integrações: a nova sessão permite gerenciar a coleção e exige `offers:write` do dono ativo. Sessões antigas apenas de leitura não permitem gravar. A chave de configuração Evolution não dá acesso a este cadastro.
 
-Em Minha coleção de produtos, cadastre um link HTTPS Mercado Livre/meli.la. O ID MLB é extraído do caminho de links completos quando possível; links curtos exigem ID informado pelo operador. Nenhum redirecionamento de link é buscado pelo servidor. A associação não certifica comissão nem que o destino de um link curto corresponde ao ID fornecido; revise antes do uso.
+Em Minha coleção de produtos, cadastre um link HTTPS Mercado Livre/meli.la. O ID MLB é extraído do caminho de links completos quando possível; links curtos podem ser salvos sem ID técnico. Códigos como BU7HG1-L7MB são referências, armazenadas separadamente; o ID técnico fica nulo e a interface exibe identificação pendente. Nenhum redirecionamento de link é buscado pelo servidor. A associação não certifica comissão nem que o destino de um link curto corresponde ao ID fornecido; revise antes do uso.
 
-Lotes aceitam até 200 linhas no formato `link;MLB1234567890;nome opcional`. Linhas inválidas impedem a gravação do lote inteiro e retornam números de linha. Duplicatas por workspace/ID são ignoradas. Edição, pausa/retomada e remoção lógica são auditadas. Remoção preserva histórico; o anúncio pode ser cadastrado novamente. Esta etapa não ativa agendamento ou envio.
+Aplique também a migração 0004 para permitir o ID opcional e criar reference_code. Lotes aceitam códigos de referência ou apenas links, além do formato `link;MLB1234567890;nome opcional`. Linhas inválidas impedem a gravação do lote inteiro e retornam números de linha. Duplicatas por workspace/ID são ignoradas. Edição, pausa/retomada e remoção lógica são auditadas. Remoção preserva histórico; o anúncio pode ser cadastrado novamente. Esta etapa não ativa agendamento ou envio.
 
 Configure `MERCADO_LIVRE_PRODUCTS_TOKEN` no serviço principal com uma chave aleatória de pelo menos 32 caracteres, diferente da chave Evolution. Gere localmente com `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Não versione o valor.
 
