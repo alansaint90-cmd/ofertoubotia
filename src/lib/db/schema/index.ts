@@ -63,6 +63,17 @@ export const affiliateIntegrations = pgTable("affiliate_integrations", {
   ...audit(),
 }, table => [index("affiliate_integrations_workspace_idx").on(table.workspaceId)]);
 
+export const productCollection = pgTable("product_collection", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "restrict", onUpdate: "restrict" }),
+  itemId: text("item_id").notNull(),
+  affiliateUrl: text("affiliate_url").notNull(),
+  title: text("title").notNull().default(""),
+  isActive: boolean("is_active").notNull().default(true),
+  modifiedBy: uuid("modified_by").notNull().references(() => users.id, { onDelete: "restrict", onUpdate: "restrict" }),
+  ...audit(),
+}, table => [uniqueIndex("product_collection_live_item_idx").on(table.workspaceId, table.itemId).where(sql`${table.isDeleted} = false`)]);
+
 export const affiliateLinks = pgTable("affiliate_links", {
   id: uuid("id").primaryKey().defaultRandom(),
   workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "restrict", onUpdate: "restrict" }),

@@ -15,7 +15,7 @@ export function database() {
   return drizzle(pool);
 }
 
-export async function setupActor(permission: "integrations:manage" | "dispatches:publish" | "offers:read") {
+export async function setupActor(permission: "integrations:manage" | "dispatches:publish" | "offers:read" | "offers:write") {
   const workspaceId = z.uuid().parse(process.env.EVOLUTION_WORKSPACE_ID);
   const db = database();
   const [row] = await db.select({ workspaceId: workspaces.id, ownerId: workspaces.ownerId, role: workspaceMembers.role })

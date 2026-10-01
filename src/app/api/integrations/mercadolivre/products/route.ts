@@ -26,15 +26,15 @@ export async function POST(request: Request) {
     const jar = await cookies();
     if (data.action === "unlock") {
       if (!timingSafeEqual(digest(data.token), digest(key))) return reply({ error: "unauthorized" }, 401);
-      const actor = await setupActor("offers:read");
+      const actor = await setupActor("offers:write");
       await actor.db.insert(auditLogs).values({ workspaceId: actor.workspaceId, actorId: actor.actorId, operation: "mercadolivre.products_access", entityType: "workspace", entityId: actor.workspaceId, modifiedBy: actor.actorId });
-      jar.set(COOKIE, encryptCredentials({ scope: "mercadolivre:products:read", workspace: actor.workspaceId, actor: actor.actorId, keyVersion: digest(key).toString("hex"), expires: String(Date.now() + 900000) }), { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/api/integrations/mercadolivre/products", maxAge: 900 });
+      jar.set(COOKIE, encryptCredentials({ scope: "mercadolivre:products:manage", workspace: actor.workspaceId, actor: actor.actorId, keyVersion: digest(key).toString("hex"), expires: String(Date.now() + 900000) }), { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/api/integrations/mercadolivre/products", maxAge: 900 });
       return reply({ unlocked: true });
     }
     let session: Record<string, string>;
     try { session = decryptCredentials(jar.get(COOKIE)?.value ?? ""); } catch { return reply({ error: "unauthorized" }, 401); }
-    if (session.scope !== "mercadolivre:products:read" || !Number.isFinite(Number(session.expires)) || Number(session.expires) <= Date.now() || session.keyVersion !== digest(key).toString("hex")) return reply({ error: "unauthorized" }, 401);
-    const actor = await setupActor("offers:read");
+    if (session.scope !== "mercadolivre:products:manage" || !Number.isFinite(Number(session.expires)) || Number(session.expires) <= Date.now() || session.keyVersion !== digest(key).toString("hex")) return reply({ error: "unauthorized" }, 401);
+    const actor = await setupActor("offers:write");
     if (session.workspace !== actor.workspaceId || session.actor !== actor.actorId) return reply({ error: "unauthorized" }, 401);
     let tokens = await liveMercadoLivreToken(actor);
     try { return reply(await queryRealProducts(tokens.accessToken, tokens.userId, data.itemId, data.offset)); }

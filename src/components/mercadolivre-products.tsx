@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { ProductCollection } from "@/components/product-collection";
 import type { RealProduct } from "@/lib/integrations/mercadolivre-products";
 
 const errors: Record<string, string> = {
@@ -32,12 +33,12 @@ export function MercadoLivreProducts() {
     } catch (error) { setMessage(error instanceof Error ? error.message : "Falha de rede."); }
     finally { setBusy(false); }
   }
-  return <section className="panel" aria-labelledby="ml-products-title">
+  return <><section className="panel" aria-labelledby="ml-products-title">
     <h2 id="ml-products-title">Produtos reais · Mercado Livre</h2>
     <p>Consulte um anúncio pelo ID ou liste os anúncios da sua conta vendedora. Esta consulta não é uma busca geral de ofertas de afiliados.</p>
     {!unlocked ? <form onSubmit={event => { event.preventDefault(); void run("unlock"); }}><label className="field">Chave de consulta de produtos<input type="password" autoComplete="off" value={key} onChange={event => setKey(event.target.value)} required minLength={32}/></label><button className="button primary" disabled={busy}>Liberar consulta</button></form> : <form onSubmit={event => { event.preventDefault(); void run("query"); }}><label className="field">ID do anúncio<input value={itemId} onChange={event => setItemId(event.target.value)} placeholder="MLB1234567890" pattern="[Mm][Ll][Bb][0-9]{6,20}" required/></label><div className="editor-actions"><button className="button primary" disabled={busy}>Consultar anúncio</button><button type="button" className="button outline" disabled={busy} onClick={() => void run("query", 0, true)}>Listar anúncios da minha conta</button></div></form>}
     <p role="status">{busy ? "Consultando o Mercado Livre…" : message}</p>
     <div className="product-grid">{products.map(product => <article className="panel" key={product.id}><small>{product.id} · {product.status}</small><h3>{product.title}</h3><p>{product.price === null ? "Preço indisponível" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: product.currency }).format(product.price)}</p>{product.url && <a className="button outline" href={product.url} target="_blank" rel="noreferrer">Abrir anúncio</a>}</article>)}</div>
     {next !== null && <button className="button outline" disabled={busy} onClick={() => void run("query", next, true)}>Próxima página</button>}
-  </section>;
+  </section>{unlocked && <ProductCollection/>}</>;
 }
