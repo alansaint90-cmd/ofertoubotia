@@ -36,6 +36,13 @@
       "when": 1790822709589,
       "tag": "0004_busy_greymalkin",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790823816424,
+      "tag": "0005_fancy_electro",
+      "breakpoints": true
     }
   ]
 }

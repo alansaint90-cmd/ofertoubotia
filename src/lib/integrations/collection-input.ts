@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 export function identifyItem(link: string): string | undefined {
-  try { return new URL(link).pathname.match(/(?:^|\/)MLB-?(\d{6,20})(?=[^0-9]|$)/i)?.[1]?.replace(/^(.*)$/, "MLB$1"); } catch { return undefined; }
+  try {
+    const url = new URL(link);
+    if (/\/p\/MLB/i.test(url.pathname) || /^\/social\//i.test(url.pathname)) return undefined;
+    return url.pathname.match(/(?:^|\/)MLB-?(\d{6,20})(?=[^0-9]|$)/i)?.[1]?.replace(/^(.*)$/, "MLB$1");
+  } catch { return undefined; }
 }
 export const collectionEntry = z.object({
   affiliateUrl: z.string().trim().max(2000).url().refine(value => {

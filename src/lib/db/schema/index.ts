@@ -68,6 +68,7 @@ export const productCollection = pgTable("product_collection", {
   workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "restrict", onUpdate: "restrict" }),
   itemId: text("item_id"),
   referenceCode: text("reference_code").notNull().default(""),
+  details: jsonb("details").notNull().default({}),
   affiliateUrl: text("affiliate_url").notNull(),
   title: text("title").notNull().default(""),
   isActive: boolean("is_active").notNull().default(true),

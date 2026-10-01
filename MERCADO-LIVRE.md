@@ -1,10 +1,20 @@
 # Consulta de produtos Mercado Livre
 
+## Identificação e prévia
+
+Aplique a migração 0005 com `pnpm db:migrate`. Em cada produto salvo, use **Identificar pelo link**. O servidor segue até cinco etapas de redirecionamento HTTPS nos hosts oficiais permitidos, sem cookies nem credenciais OAuth, com conexão fixada ao IPv4 público validado, limite de tamanho e timeout. Identifica anúncios em URLs diretas, parâmetros item_id/wid ou URL canônica. Não escolhe produtos recomendados em vitrines nem confunde identificadores de catálogo com anúncios.
+
+Quando identificado, consulta o anúncio na API com renovação de token, grava título, preço em BRL, foto e estado do anúncio. A prévia exige revisão. Falhas, vitrines, páginas dependentes de JavaScript e bloqueios da plataforma levam ao preenchimento manual, sem contornar os bloqueios.
+
+Use **Preencher e revisar** para título, preço, texto e URL HTTPS da imagem hospedada em mlstatic.com. A prévia mostra foto, legenda e link original de afiliado. Confirme a revisão para persistir. Dados modificados manualmente são marcados como manuais; revisão sem mudanças mantém origem API e data da consulta. Não existe atualização automática de preços manuais. Edição do cadastro básico invalida os detalhes anteriores. A revisão não dispara mensagens nem ativa agendamentos.
+
+Validação local inclui cenários simulados de redirecionamento, rede privada, bloqueio da plataforma e preenchimento manual. A identificação de cada link real depende do destino e do acesso disponível pela API na implantação.
+
 ## Coleção persistente
 
 Após atualizar, execute `pnpm db:migrate` no serviço para criar `product_collection`. Libere novamente a chave de produtos em Integrações: a nova sessão permite gerenciar a coleção e exige `offers:write` do dono ativo. Sessões antigas apenas de leitura não permitem gravar. A chave de configuração Evolution não dá acesso a este cadastro.
 
-Em Minha coleção de produtos, cadastre um link HTTPS Mercado Livre/meli.la. O ID MLB é extraído do caminho de links completos quando possível; links curtos podem ser salvos sem ID técnico. Códigos como BU7HG1-L7MB são referências, armazenadas separadamente; o ID técnico fica nulo e a interface exibe identificação pendente. Nenhum redirecionamento de link é buscado pelo servidor. A associação não certifica comissão nem que o destino de um link curto corresponde ao ID fornecido; revise antes do uso.
+Em Minha coleção de produtos, cadastre um link HTTPS Mercado Livre/meli.la. O ID MLB é extraído do caminho de links completos quando possível; links curtos podem ser salvos sem ID técnico. Códigos como BU7HG1-L7MB são referências, armazenadas separadamente; o ID técnico fica nulo e a interface exibe identificação pendente. O cadastro inicial não segue redirecionamentos; a consulta é executada ao clicar em Identificar pelo link. A associação não certifica comissão nem que o destino de um link curto corresponde ao ID fornecido; revise antes do uso.
 
 Aplique também a migração 0004 para permitir o ID opcional e criar reference_code. Lotes aceitam códigos de referência ou apenas links, além do formato `link;MLB1234567890;nome opcional`. Linhas inválidas impedem a gravação do lote inteiro e retornam números de linha. Duplicatas por workspace/ID são ignoradas. Edição, pausa/retomada e remoção lógica são auditadas. Remoção preserva histórico; o anúncio pode ser cadastrado novamente. Esta etapa não ativa agendamento ou envio.
 
