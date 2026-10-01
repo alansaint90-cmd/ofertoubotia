@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { CollectionProductReview } from "@/components/collection-product-review";
 import type { ProductDetails } from "@/lib/integrations/product-review";
+import { BrowserProductImport } from "@/components/browser-product-import";
 
 type Item = { id: string; itemId: string | null; referenceCode: string; affiliateUrl: string; title: string; isActive: boolean; details?: Partial<ProductDetails> };
 const endpoint = "/api/integrations/mercadolivre/products/collection";
@@ -44,6 +45,7 @@ export function ProductCollection() {
   }
   return <section className="panel" aria-labelledby="collection-title">
     <h2 id="collection-title">Minha coleção de produtos</h2>
+    <BrowserProductImport onSaved={load}/>
     <p>Salve seus links de afiliado. O cadastro associa o ID informado ao link; não confirma comissão ou disponibilidade e não ativa envios.</p>
     <form onSubmit={event => { event.preventDefault(); void save(editing ? { action: "edit", id: editing, entry } : { action: "add", entries: [entry] }); }}>
       <label className="field">Link de afiliado<input type="url" required maxLength={2000} value={entry.affiliateUrl} onChange={event => setEntry({ ...entry, affiliateUrl: event.target.value })}/></label>
@@ -55,6 +57,6 @@ export function ProductCollection() {
     <p role="status" style={{ whiteSpace: "pre-wrap" }}>{busy ? "Salvando…" : notice}</p>
     <h3>{items.length} produto(s) cadastrado(s)</h3>
     {!items.length && <p>Sua coleção está vazia. Cadastre o primeiro produto acima.</p>}
-    <div className="product-grid">{items.map(item => <article className="panel" key={item.id}><h3>{item.title || item.referenceCode || item.itemId || "Produto pendente"}</h3><p>{item.itemId || "Identificação do anúncio pendente"}{item.referenceCode ? " · Referência: " + item.referenceCode : ""} · {item.isActive ? "Ativo na coleção" : "Pausado"}</p><a href={item.affiliateUrl} target="_blank" rel="noreferrer" style={{ overflowWrap: "anywhere" }}>{item.affiliateUrl}</a><div className="editor-actions"><button disabled={busy} className="button outline" onClick={() => { setEditing(item.id); setEntry({ title: item.title, itemId: item.referenceCode || item.itemId || "", affiliateUrl: item.affiliateUrl }); document.getElementById("collection-title")?.scrollIntoView(); }}>Editar</button><button disabled={busy} className="button outline" onClick={() => void save({ action: "toggle", id: item.id, active: !item.isActive })}>{item.isActive ? "Pausar" : "Retomar"}</button><button disabled={busy} className="button outline" onClick={() => setRemoving(item.id)}>Remover</button></div>{removing === item.id && <div><p>Remover este produto da coleção?</p><button disabled={busy} className="button outline" onClick={() => void save({ action: "remove", id: item.id })}>Confirmar remoção</button><button className="button outline" onClick={() => setRemoving("")}>Cancelar</button></div>}<CollectionProductReview key={item.affiliateUrl} id={item.id} title={item.title} link={item.affiliateUrl} details={item.details} onSaved={load}/></article>)}</div>
+    <div className="product-grid">{items.map(item => <article className="panel" key={item.id}><h3>{item.title || item.referenceCode || item.itemId || "Produto pendente"}</h3><p>{item.itemId || (item.details?.catalogId ? "Catálogo: " + item.details.catalogId : "Identificação do anúncio pendente")}{item.referenceCode ? " · Referência: " + item.referenceCode : ""} · {item.isActive ? "Ativo na coleção" : "Pausado"}</p><a href={item.affiliateUrl} target="_blank" rel="noreferrer" style={{ overflowWrap: "anywhere" }}>{item.affiliateUrl}</a><div className="editor-actions"><button disabled={busy} className="button outline" onClick={() => { setEditing(item.id); setEntry({ title: item.title, itemId: item.referenceCode || item.itemId || "", affiliateUrl: item.affiliateUrl }); document.getElementById("collection-title")?.scrollIntoView(); }}>Editar</button><button disabled={busy} className="button outline" onClick={() => void save({ action: "toggle", id: item.id, active: !item.isActive })}>{item.isActive ? "Pausar" : "Retomar"}</button><button disabled={busy} className="button outline" onClick={() => setRemoving(item.id)}>Remover</button></div>{removing === item.id && <div><p>Remover este produto da coleção?</p><button disabled={busy} className="button outline" onClick={() => void save({ action: "remove", id: item.id })}>Confirmar remoção</button><button className="button outline" onClick={() => setRemoving("")}>Cancelar</button></div>}<CollectionProductReview key={item.affiliateUrl + (item.details?.checkedAt ?? "")} id={item.id} title={item.title} link={item.affiliateUrl} details={item.details} onSaved={load}/></article>)}</div>
   </section>;
 }

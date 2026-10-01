@@ -10,7 +10,7 @@ export const manualReviewSchema = z.object({
   description: z.string().trim().max(1500).default(""),
   confirmed: z.literal(true),
 });
-export type ProductDetails = { title: string; price: number | null; imageUrl: string; description: string; source: "api" | "manual"; reviewedAt: string | null; checkedAt: string; status?: string };
+export type ProductDetails = { title: string; price: number | null; imageUrl: string; description: string; source: "api" | "manual" | "browser"; reviewedAt: string | null; checkedAt: string; status?: string; catalogId?: string | null; productUrl?: string };
 
 export function itemFromProductUrl(value: string): string | undefined {
   try {

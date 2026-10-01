@@ -12,6 +12,7 @@ import { manualReviewSchema, itemFromProductUrl, safeProductImage, type ProductD
 import { resolveProductLink } from "@/lib/integrations/resolve-product-link";
 import { liveMercadoLivreToken } from "@/lib/integrations/mercadolivre-token-store";
 import { mlGet } from "@/lib/integrations/mercadolivre-products";
+import { browserImportSchema, productIdentity } from "@/lib/integrations/browser-import";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,6 +36,7 @@ export async function GET() {
   } catch (error) { return fail(error); }
 }
 const command = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("browser-import"), product: browserImportSchema, confirmed: z.literal(true) }),
   z.object({ action: z.literal("resolve"), id: z.uuid() }),
   z.object({ action: z.literal("review"), id: z.uuid(), details: manualReviewSchema }),
   z.object({ action: z.literal("add"), entries: z.array(collectionEntry).min(1).max(200) }),
@@ -51,6 +53,22 @@ export async function POST(request: Request) {
     const parsed = command.safeParse(await readLimitedJson(request, 500000));
     if (!parsed.success) return reply({ error: parsed.error.issues.map(issue => issue.message).join(" ") }, 400);
     const data = parsed.data;
+    if (data.action === "browser-import") {
+      const product = data.product;
+      const identity = productIdentity(product.productUrl);
+      const result = await db.transaction(async tx => {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${workspaceId}), hashtext('product_collection'))`);
+        const existing = await tx.select({ id: productCollection.id, affiliateUrl: productCollection.affiliateUrl }).from(productCollection).where(and(eq(productCollection.workspaceId, workspaceId), eq(productCollection.isDeleted, false), or(eq(productCollection.affiliateUrl, product.affiliateUrl), identity.itemId ? eq(productCollection.itemId, identity.itemId) : undefined)));
+        if (existing.some(row => row.affiliateUrl !== product.affiliateUrl)) return { error: "Este anúncio já possui outro link na coleção. Revise o cadastro existente." };
+        const values = { modifiedBy: actorId, itemId: identity.itemId, title: product.title, affiliateUrl: product.affiliateUrl, details: { title: product.title, price: product.price, imageUrl: product.imageUrl, description: product.description, source: "browser", checkedAt: product.capturedAt, reviewedAt: new Date().toISOString(), catalogId: identity.catalogId, productUrl: product.productUrl } };
+        const [saved] = existing.length
+          ? await tx.update(productCollection).set({ ...values, updatedAt: new Date() }).where(and(eq(productCollection.id, existing[0].id), eq(productCollection.workspaceId, workspaceId), eq(productCollection.isDeleted, false))).returning({ id: productCollection.id })
+          : await tx.insert(productCollection).values({ ...values, workspaceId }).returning({ id: productCollection.id });
+        await tx.insert(auditLogs).values({ workspaceId, actorId, operation: "collection.browser_import", entityType: "product_collection", entityId: saved.id, metadata: { source: "browser", catalogId: identity.catalogId }, modifiedBy: actorId });
+        return { imported: true, id: saved.id };
+      });
+      return reply(result, "error" in result ? 409 : 200);
+    }
     if (data.action === "resolve" || data.action === "review") {
       const filter = and(eq(productCollection.id, data.id), eq(productCollection.workspaceId, workspaceId), eq(productCollection.isDeleted, false));
       const [row] = await db.select().from(productCollection).where(filter).limit(1);
@@ -81,10 +99,12 @@ export async function POST(request: Request) {
       } else {
         details = { title: data.details.title, price: data.details.price, imageUrl: data.details.imageUrl, description: data.details.description, source: "manual", reviewedAt: new Date().toISOString(), checkedAt: new Date().toISOString() };
         const previous = row.details as Partial<ProductDetails>;
-        if (previous.source === "api" && previous.title === details.title && previous.price === details.price && previous.imageUrl === details.imageUrl && previous.description === details.description) {
-          details.source = "api";
+        if ((previous.source === "api" || previous.source === "browser") && previous.title === details.title && previous.price === details.price && previous.imageUrl === details.imageUrl && previous.description === details.description) {
+          details.source = previous.source;
           details.checkedAt = previous.checkedAt ?? details.checkedAt;
           details.status = previous.status;
+          details.catalogId = previous.catalogId;
+          details.productUrl = previous.productUrl;
         }
       }
       const result = await db.transaction(async tx => {

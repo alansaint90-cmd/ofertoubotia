@@ -1,0 +1,8 @@
+{
+  "manifest_version": 3,
+  "name": "Ofertou — importar produto",
+  "version": "0.1.0",
+  "description": "Captura o produto destacado após seu clique e abre a revisão no Ofertou.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "action": { "default_popup": "popup.html", "default_title": "Importar para o Ofertou" }
+}

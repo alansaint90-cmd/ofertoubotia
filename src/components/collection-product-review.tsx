@@ -31,11 +31,11 @@ export function CollectionProductReview({ id, title, link, details, onSaved }: {
     finally { setBusy(false); }
   }
   return <div>
-    <p>{details?.reviewedAt ? "Dados revisados" : "Revisão pendente"}{details?.source ? ` · ${details.source === "api" ? "Consulta API" : "Preenchimento manual"}` : ""}</p>
+    <p>{details?.reviewedAt ? "Dados revisados" : "Revisão pendente"}{details?.source ? ` · ${details.source === "api" ? "Consulta API" : details.source === "browser" ? "Captura do navegador" : "Preenchimento manual"}` : ""}</p>
     <div className="editor-actions"><button className="button outline" disabled={busy} onClick={() => void submit("resolve")}>Identificar pelo link</button><button className="button outline" disabled={busy} onClick={() => setOpen(!open)}>{open ? "Fechar prévia" : "Preencher e revisar"}</button></div>
     <p role="status">{busy ? "Processando…" : message}</p>
     {open && <form onSubmit={event => { event.preventDefault(); void submit("review"); }}>
-      <p>{source === "api" ? "Dados obtidos na API, sujeitos a mudanças de preço." : "Dados manuais: confira o anúncio. O preço não será atualizado automaticamente."}</p>
+      <p>{source === "api" ? "Dados obtidos na API, sujeitos a mudanças de preço." : source === "browser" ? "Dados capturados no navegador. Capture novamente para atualizar o preço." : "Dados manuais: confira o anúncio. O preço não será atualizado automaticamente."}</p>
       <label className="field">Título da oferta<input required maxLength={200} value={name} onChange={event => { setName(event.target.value); edit(); }}/></label>
       <label className="field">Preço em reais<input type="number" required min="0.01" max="10000000" step="0.01" value={price} onChange={event => { setPrice(event.target.value); edit(); }}/></label>
       <label className="field">URL da foto do produto<input type="url" required maxLength={2000} value={imageUrl} onChange={event => { setImageUrl(event.target.value); setImageFailed(false); edit(); }}/><span>Abra a foto do anúncio e copie o endereço da imagem HTTPS hospedada em mlstatic.com.</span></label>
