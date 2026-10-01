@@ -15,6 +15,17 @@ export function CollectionProductReview({ id, title, link, details, onSaved }: {
   const [source, setSource] = useState(details?.source ?? "manual");
   const [imageFailed, setImageFailed] = useState(false);
   function edit() { setConfirmed(false); setSource("manual"); }
+  async function generate(field: "title" | "description") {
+    setBusy(true); setMessage("Gerando copy com IA…");
+    try {
+      const response = await fetch("/api/integrations/mercadolivre/products/collection", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "copy", id, input: { field, title: name, price: Number(price), description } }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      if (field === "title") setName(result.text); else setDescription(result.text);
+      edit(); setMessage("Copy gerada. Confira os fatos e a prévia antes de salvar.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao gerar copy."); }
+    finally { setBusy(false); }
+  }
   async function submit(action: "resolve" | "review") {
     setBusy(true); setMessage(""); setOpen(true);
     try {
@@ -36,10 +47,10 @@ export function CollectionProductReview({ id, title, link, details, onSaved }: {
     <p role="status">{busy ? "Processando…" : message}</p>
     {open && <form onSubmit={event => { event.preventDefault(); void submit("review"); }}>
       <p>{source === "api" ? "Dados obtidos na API, sujeitos a mudanças de preço." : source === "browser" ? "Dados capturados no navegador. Capture novamente para atualizar o preço." : "Dados manuais: confira o anúncio. O preço não será atualizado automaticamente."}</p>
-      <label className="field">Título da oferta<input required maxLength={200} value={name} onChange={event => { setName(event.target.value); edit(); }}/></label>
+      <button type="button" className="button outline" disabled={busy || !name.trim() || !(Number(price) > 0)} onClick={() => void generate("title")}>Gerar título com IA</button><label className="field">Título da oferta<input disabled={busy} required maxLength={200} value={name} onChange={event => { setName(event.target.value); edit(); }}/></label>
       <label className="field">Preço em reais<input type="number" required min="0.01" max="10000000" step="0.01" value={price} onChange={event => { setPrice(event.target.value); edit(); }}/></label>
       <label className="field">URL da foto do produto<input type="url" required maxLength={2000} value={imageUrl} onChange={event => { setImageUrl(event.target.value); setImageFailed(false); edit(); }}/><span>Abra a foto do anúncio e copie o endereço da imagem HTTPS hospedada em mlstatic.com.</span></label>
-      <label className="field">Texto complementar<textarea maxLength={1500} rows={3} value={description} onChange={event => { setDescription(event.target.value); edit(); }}/></label>
+      <button type="button" className="button outline" disabled={busy || !name.trim() || !(Number(price) > 0)} onClick={() => void generate("description")}>Gerar texto com IA</button><label className="field">Texto complementar<textarea disabled={busy} maxLength={1500} rows={3} value={description} onChange={event => { setDescription(event.target.value); edit(); }}/></label>
       <div className="panel" aria-label="Prévia da oferta"><h4>Prévia para revisão</h4>
         {safeProductImage(imageUrl) && !imageFailed ? <Image unoptimized width={400} height={260} src={imageUrl} alt={name || "Foto do produto"} referrerPolicy="no-referrer" style={{ width: "100%", maxHeight: 260, objectFit: "contain" }} onError={() => setImageFailed(true)}/> : <p>Foto indisponível. Confira o endereço da imagem.</p>}
         <strong>{name || "Título da oferta"}</strong><p>{Number(price) > 0 ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(price)) : "Informe o preço"}</p><p style={{ whiteSpace: "pre-wrap" }}>{description}</p><a href={link} target="_blank" rel="noreferrer" style={{ overflowWrap: "anywhere" }}>{link}</a>

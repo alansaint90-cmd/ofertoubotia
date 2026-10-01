@@ -13,6 +13,7 @@ import { resolveProductLink } from "@/lib/integrations/resolve-product-link";
 import { liveMercadoLivreToken } from "@/lib/integrations/mercadolivre-token-store";
 import { mlGet } from "@/lib/integrations/mercadolivre-products";
 import { browserImportSchema, productIdentity } from "@/lib/integrations/browser-import";
+import { copyInput, generateOfferCopy } from "@/lib/integrations/offer-copy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +37,7 @@ export async function GET() {
   } catch (error) { return fail(error); }
 }
 const command = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("copy"), id: z.uuid(), input: copyInput }),
   z.object({ action: z.literal("browser-import"), product: browserImportSchema, confirmed: z.literal(true) }),
   z.object({ action: z.literal("resolve"), id: z.uuid() }),
   z.object({ action: z.literal("review"), id: z.uuid(), details: manualReviewSchema }),
@@ -53,6 +55,20 @@ export async function POST(request: Request) {
     const parsed = command.safeParse(await readLimitedJson(request, 500000));
     if (!parsed.success) return reply({ error: parsed.error.issues.map(issue => issue.message).join(" ") }, 400);
     const data = parsed.data;
+    if (data.action === "copy") {
+      const [row] = await db.select({ id: productCollection.id }).from(productCollection).where(and(eq(productCollection.id, data.id), eq(productCollection.workspaceId, workspaceId), eq(productCollection.isDeleted, false))).limit(1);
+      if (!row) return reply({ error: "Produto não encontrado." }, 404);
+      const allowed = await db.transaction(async tx => {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${workspaceId}), hashtext('collection_copy'))`);
+        const [recent] = await tx.select({ id: auditLogs.id }).from(auditLogs).where(and(eq(auditLogs.workspaceId, workspaceId), eq(auditLogs.operation, "collection.copy_requested"), eq(auditLogs.isDeleted, false), sql`${auditLogs.createdAt} > now() - interval '10 seconds'`)).limit(1);
+        if (recent) return false;
+        await tx.insert(auditLogs).values({ workspaceId, actorId, operation: "collection.copy_requested", entityType: "product_collection", entityId: row.id, metadata: { field: data.input.field }, modifiedBy: actorId });
+        return true;
+      });
+      if (!allowed) return reply({ error: "Aguarde 10 segundos entre gerações de copy." }, 429);
+      try { return reply({ text: await generateOfferCopy(data.input) }); }
+      catch (error) { return reply({ error: error instanceof Error && error.name !== "TimeoutError" ? error.message : "A geração demorou demais. Tente novamente." }, 502); }
+    }
     if (data.action === "browser-import") {
       const product = data.product;
       const identity = productIdentity(product.productUrl);
