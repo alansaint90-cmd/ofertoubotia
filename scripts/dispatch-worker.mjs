@@ -1,3 +1,4 @@
+import { dispatchMediaPayload } from "../src/lib/evolution/dispatch-media.ts";
 import pg from "pg";
 import { allowedDispatchTarget } from "../src/lib/evolution/target-code.ts";
 
@@ -22,12 +23,12 @@ async function claim() {
   try {
     await client.query("begin");
     const result = await client.query(`
-      select d.id, d.workspace_id, d.attempts, d.group_id, d.offer_id, o.body, o.created_by as actor_id,
+      select d.id, d.workspace_id, d.attempts, d.group_id, d.offer_id, o.body, o.product_snapshot, o.created_by as actor_id,
              g.external_group_id, g.metadata, g.is_active, i.instance_name
       from dispatches d
-      join offers o on o.id = d.offer_id and o.is_deleted = false
-      join whatsapp_groups g on g.id = d.group_id and g.is_deleted = false
-      join whatsapp_instances i on i.id = g.instance_id and i.is_deleted = false
+      join offers o on o.id = d.offer_id and o.workspace_id = d.workspace_id and o.is_deleted = false
+      join whatsapp_groups g on g.id = d.group_id and g.workspace_id = d.workspace_id and g.is_deleted = false
+      join whatsapp_instances i on i.id = g.instance_id and i.workspace_id = d.workspace_id and i.is_deleted = false
       where d.workspace_id = $1 and d.status = 'queued' and d.is_deleted = false
         and d.queued_at <= now() and d.attempts < 3
       order by d.queued_at, d.id
@@ -82,9 +83,9 @@ async function processJob(job) {
   } catch { await retryBeforeSend(job, "state_check_failed"); return; }
 
   try {
-    const response = await fetch(endpoint(`message/sendText/${instance}`), {
+    const response = await fetch(endpoint(`message/${job.product_snapshot?.source === "collection" ? "sendMedia" : "sendText"}/${instance}`), {
       method: "POST", headers: { ...apiHeaders, "Content-Type": "application/json" },
-      body: JSON.stringify({ number: job.external_group_id, text: job.body }), signal: AbortSignal.timeout(20000),
+      body: JSON.stringify(dispatchMediaPayload(job.external_group_id, job.body, job.product_snapshot)), signal: AbortSignal.timeout(20000),
     });
     if (!response.ok) { await finish(job, response.status >= 500 ? "uncertain" : "failed", null, `evolution_http_${response.status}`); return; }
     const payload = await response.json();

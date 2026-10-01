@@ -3,8 +3,8 @@ import { z } from "zod";
 import { hasSetupSession, sameOrigin, setupReady } from "@/lib/evolution/setup";
 import { TARGET_INVITE_HASH } from "@/lib/evolution/target";
 import { setupActor } from "@/lib/db/runtime";
-import { auditLogs, dispatches, offers, whatsappGroups, whatsappInstances } from "@/lib/db/schema";
-import { products } from "@/lib/demo";
+import { auditLogs, dispatches, offers, whatsappGroups, whatsappInstances, productCollection } from "@/lib/db/schema";
+import { manualReviewSchema } from "@/lib/integrations/product-review";
 import { readLimitedJson } from "@/lib/http/read-json";
 
 export const runtime = "nodejs";
@@ -12,10 +12,8 @@ export const dynamic = "force-dynamic";
 
 const inputSchema = z.strictObject({
   requestId: z.uuid(),
-  productId: z.string().min(1).max(100),
-  headline: z.string().trim().min(3).max(120),
-  body: z.string().trim().min(5).max(3500),
-  affiliateLink: z.url().max(1000),
+  productId: z.uuid(),
+  updatedAt: z.string().datetime(),
   confirmed: z.literal(true),
 });
 const reply = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -59,12 +57,16 @@ export async function POST(request: Request): Promise<Response> {
   catch (error) { return reply({ error: "invalid_request" }, error instanceof Error && error.message === "too_large" ? 413 : 400); }
   const parsed = inputSchema.safeParse(input);
   if (!parsed.success) return reply({ error: "invalid_request" }, 400);
-  const link = checkedLink(parsed.data.affiliateLink);
-  const product = products.find(item => item.id === parsed.data.productId);
-  if (!link || !product) return reply({ error: "invalid_offer" }, 400);
   try {
     const { db, workspaceId, actorId } = await setupActor("dispatches:publish");
     const result = await db.transaction(async tx => {
+      const [product] = await tx.select().from(productCollection).where(and(eq(productCollection.id, parsed.data.productId), eq(productCollection.workspaceId, workspaceId), eq(productCollection.isDeleted, false), eq(productCollection.isActive, true))).for("update").limit(1);
+      if (!product || product.updatedAt.toISOString() !== parsed.data.updatedAt) throw new Error("product_changed");
+      const details = manualReviewSchema.safeParse({ ...(product.details as object), confirmed: true });
+      if (!details.success || !(product.details as { reviewedAt?: string }).reviewedAt) throw new Error("review_required");
+      const link = checkedLink(product.affiliateUrl);
+      if (!link) throw new Error("invalid_offer");
+      const message = `${details.data.title}\n\n${details.data.price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}\n\n${details.data.description}\n\n🛒 ${link}`;
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${workspaceId}), hashtext(${product.id}))`);
       const [existing] = await tx.select({ id: dispatches.id, status: dispatches.status }).from(dispatches)
         .where(and(eq(dispatches.workspaceId, workspaceId), eq(dispatches.requestId, parsed.data.requestId), eq(dispatches.isDeleted, false))).limit(1);
@@ -79,15 +81,14 @@ export async function POST(request: Request): Promise<Response> {
         .where(and(eq(dispatches.workspaceId, workspaceId), eq(dispatches.groupId, group.id), eq(offers.externalProductId, product.id), inArray(dispatches.status, ["queued", "processing", "accepted", "uncertain"]), gte(dispatches.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000)), eq(dispatches.isDeleted, false), eq(offers.isDeleted, false)))
         .limit(1);
       if (recent) throw new Error("duplicate_24h");
-      const message = parsed.data.body.includes(link) || parsed.data.body.includes(parsed.data.affiliateLink)
-        ? parsed.data.body : `${parsed.data.body}\n\n🛒 ${link}`;
-      const [offer] = await tx.insert(offers).values({ workspaceId, provider: "manual_review", externalProductId: product.id, productSnapshot: { source: "demo_catalog", productId: product.id, name: product.name, affiliateLink: link, confirmedByOperator: true }, headline: parsed.data.headline, body: message, status: "queued", createdBy: actorId, modifiedBy: actorId }).returning({ id: offers.id });
+      const [offer] = await tx.insert(offers).values({ workspaceId, provider: "mercadolivre_collection", externalProductId: product.id, productSnapshot: { ...details.data, source: "collection", productId: product.id, affiliateLink: link, confirmedByOperator: true }, headline: details.data.title, body: message, status: "queued", createdBy: actorId, modifiedBy: actorId }).returning({ id: offers.id });
       const [dispatch] = await tx.insert(dispatches).values({ requestId: parsed.data.requestId, workspaceId, offerId: offer.id, groupId: group.id, status: "queued", queuedAt: new Date(), modifiedBy: actorId }).returning({ id: dispatches.id });
       await tx.insert(auditLogs).values({ workspaceId, actorId, operation: "dispatch.queued", entityType: "dispatch", entityId: dispatch.id, metadata: { source: "setup_session", targetInviteHash: TARGET_INVITE_HASH }, modifiedBy: actorId });
       return { id: dispatch.id, status: "queued", repeated: false };
     });
     return reply(result, result.repeated ? 200 : 202);
   } catch (error) {
+    if (error instanceof Error && ["product_changed", "review_required", "invalid_offer"].includes(error.message)) return reply({ error: error.message }, 409);
     if (error instanceof Error && error.message === "group_not_bound") return reply({ error: "group_not_bound" }, 409);
     if (error instanceof Error && error.message === "duplicate_24h") return reply({ error: "duplicate_24h" }, 409);
     return reply({ error: "dispatch_unavailable" }, 503);
