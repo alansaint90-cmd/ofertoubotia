@@ -66,7 +66,7 @@ export async function POST(request: Request): Promise<Response> {
       if (!details.success || !(product.details as { reviewedAt?: string }).reviewedAt) throw new Error("review_required");
       const link = checkedLink(product.affiliateUrl);
       if (!link) throw new Error("invalid_offer");
-      const message = `${details.data.title}\n\n${details.data.price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}\n\n${details.data.description}\n\n🛒 ${link}`;
+      const message = `${details.data.title}\n\n${/R\$/.test(details.data.description) ? "" : details.data.price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) + "\n\n"}${details.data.description}\n\n🛒 ${link}`;
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${workspaceId}), hashtext(${product.id}))`);
       const [existing] = await tx.select({ id: dispatches.id, status: dispatches.status }).from(dispatches)
         .where(and(eq(dispatches.workspaceId, workspaceId), eq(dispatches.requestId, parsed.data.requestId), eq(dispatches.isDeleted, false))).limit(1);
