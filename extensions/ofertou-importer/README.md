@@ -1,4 +1,13 @@
-# Importador Ofertou (Chrome, versão inicial)
+# Importador Ofertou (Chrome, versão 0.2.0)
+
+## Atualizar produtos já cadastrados
+1. Atualize os arquivos da extensão para a versão 0.2.0 e clique em **Recarregar** em `chrome://extensions`.
+2. Abra o produto usando o mesmo link de afiliado salvo na coleção.
+3. Capture novamente, revise e confirme a importação. O cadastro existente será atualizado.
+4. A captura mantém o título original e inclui, quando exibidos, selo Mais vendido, preço anterior, preço atual, percentual de desconto, parcelas, avaliação e vendidos. Não presume parcelas sem juros.
+5. A geração de copy recebe essas condições. Confira a prévia antes de publicar. Ofertas que já estão na fila preservam os dados revisados no momento em que foram criadas.
+
+Anúncios bloqueados pela API (403) precisam dessa nova captura no navegador. A atualização do sistema não preenche retroativamente informações ausentes nem atualiza preços em segundo plano.
 
 ## Instalação
 1. Extraia `ofertou-importer.zip` numa pasta permanente.

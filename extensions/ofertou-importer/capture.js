@@ -27,8 +27,46 @@ export function captureProduct() {
   const price = Number(`${fraction}.${cents}`);
   const imageUrl = image?.currentSrc || image?.src;
   if (!title || !productUrl || !imageUrl || currency !== "R$" || !/^\d+$/.test(fraction) || !/^\d{2}$/.test(cents) || !(price > 0)) throw new Error("Não consegui capturar foto, título e preço com segurança. Aguarde o carregamento ou abra o anúncio e tente novamente.");
-  // Include payment conditions, not only the numeric promotional price.
-  const description = text(root.querySelector(".poly-component__price") || root.querySelector(".ui-pdp-price"));
+  // Read only the selected product, never prices or badges from recommendations.
+  const first = selectors => selectors.map(selector => root.querySelector(selector)).find(Boolean);
+  const money = node => {
+    const whole = text(node?.querySelector(".andes-money-amount__fraction")).replace(/\./g, "");
+    const decimal = text(node?.querySelector(".andes-money-amount__cents")) || "00";
+    if (!/^\d+$/.test(whole) || !/^\d{2}$/.test(decimal) || text(node?.querySelector(".andes-money-amount__currency-symbol")) !== "R$") return null;
+    return Number(`${whole}.${decimal}`);
+  };
+  const brl = value => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  // Money amounts use separate DOM nodes for cents. Plain innerText loses the comma.
+  const paymentText = node => {
+    if (!node?.cloneNode) return text(node);
+    const copy = node.cloneNode(true);
+    for (const amount of copy.querySelectorAll(".andes-money-amount")) {
+      const value = money(amount);
+      if (value !== null) amount.replaceWith(document.createTextNode(brl(value)));
+    }
+    return text(copy);
+  };
+  const priceBlock = first([".poly-component__price", ".ui-pdp-price"]);
+  const oldPrice = money(first([".poly-price__previous", ".ui-pdp-price__original-value", ".ui-pdp-price s.andes-money-amount"]));
+  const discount = text(first([".poly-price__current .andes-money-amount__discount", ".ui-pdp-price__second-line .andes-money-amount__discount"]));
+  const payment = paymentText(first([".poly-price__installments", ".ui-pdp-price__subtitles"]));
+  const badge = text(first([".ui-pdp-promotions-pill-label", ".poly-component__highlight", ".ui-pdp-promotions-pill"]));
+  const rating = text(first([".ui-pdp-review__rating", ".poly-reviews__rating"]));
+  const sold = text(first([".ui-pdp-subtitle", ".poly-component__subtitle"])).match(/(?:\+\s*)?[\d.,]+\s*(?:mil\s*)?vendidos/i)?.[0];
+  const conditions = paymentText(priceBlock);
+  const lines = [];
+  if (/mais vendido/i.test(badge)) lines.push("🏆 Mais vendido");
+  // Keep the percentage displayed by the marketplace: do not recalculate it.
+  if (oldPrice && oldPrice > price) {
+    lines.push(`De ${brl(oldPrice)} por ${brl(price)}`);
+    if (/\d+\s*%/.test(discount)) lines.push(discount);
+    if (payment) lines.push(payment);
+    // Keep Pix, coupon and other restrictions even when they are outside installments.
+    if (/pix|cupom|cartão|cartao|boleto/i.test(conditions) && conditions !== payment) lines.push(conditions);
+  } else if (conditions) lines.push(conditions);
+  else lines.push(`Por ${brl(price)}`);
+  if (rating || sold) lines.push([rating && `⭐ ${rating}`, sold].filter(Boolean).join(" · "));
+  const description = lines.join("\n");
   const clean = new URL(productUrl);
   const wid = clean.searchParams.get("wid") || new URLSearchParams(clean.hash.slice(1)).get("wid");
   clean.search = ""; clean.hash = "";
