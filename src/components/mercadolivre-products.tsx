@@ -4,7 +4,7 @@ import { ProductCollection } from "@/components/product-collection";
 import type { RealProduct } from "@/lib/integrations/mercadolivre-products";
 
 const errors: Record<string, string> = {
-  unauthorized: "Libere a consulta com a chave de produtos. O acesso dura 15 minutos.",
+  unauthorized: "Libere a consulta com a chave de produtos. O acesso dura 1 hora.",
   access_not_configured: "Configure MERCADO_LIVRE_PRODUCTS_TOKEN no servidor com uma chave aleatória de pelo menos 32 caracteres.",
   invalid_request: "Informe um ID de anúncio válido, por exemplo MLB1234567890.",
   reconnect_required: "Reconecte sua conta do Mercado Livre em Integrações.",
@@ -28,7 +28,7 @@ export function MercadoLivreProducts() {
       const response = await fetch("/api/integrations/mercadolivre/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(action === "unlock" ? { action, token: key } : { action, offset, ...(!own && itemId.trim() ? { itemId: itemId.trim().toUpperCase() } : {}) }) });
       const result = await response.json();
       if (!response.ok) { if (response.status === 401) setUnlocked(false); throw new Error(errors[result.error] ?? "Consulta indisponível. Tente novamente em instantes."); }
-      if (action === "unlock") { setUnlocked(true); setKey(""); setMessage("Consulta liberada por 15 minutos."); }
+      if (action === "unlock") { setUnlocked(true); setKey(""); setMessage("Consulta liberada por 1 hora."); }
       else { setProducts(result.products); setNext(result.nextOffset); setMessage(result.products.length ? "Dados consultados agora na API oficial. O link do anúncio não garante comissão de afiliado." : "Nenhum anúncio encontrado na conta conectada. Você também pode consultar um anúncio pelo ID MLB."); }
     } catch (error) { setMessage(error instanceof Error ? error.message : "Falha de rede."); }
     finally { setBusy(false); }

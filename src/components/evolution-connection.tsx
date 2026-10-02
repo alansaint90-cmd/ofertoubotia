@@ -31,8 +31,8 @@ export function EvolutionConnection() {
 
   useEffect(() => { const timer = window.setTimeout(() => { void refresh(); }, 0); return () => window.clearTimeout(timer); }, [refresh]);
   useEffect(() => {
-    if (mode !== "ready" || connection.state === "open") return;
-    const timer = window.setInterval(() => { void refresh(); }, 10000);
+    if (mode !== "ready") return;
+    const timer = window.setInterval(() => { void refresh(); }, connection.state === "open" ? 30000 : 10000);
     return () => window.clearInterval(timer);
   }, [mode, connection.state, refresh]);
   useEffect(() => {
@@ -95,13 +95,13 @@ export function EvolutionConnection() {
   const connected = connection.state === "open" && mode === "ready";
   return <div className="integration-card evolution-card">
     <div className="integration-logo whatsapp"><MessageCircle size={29}/></div>
-    <span className={`status ${connected ? "active" : "inactive"}`}>{connected ? "Conectado" : connection.state === "connecting" ? "Conectando" : "Não conectado"}</span>
+    <span className={`status ${connected ? "active" : "inactive"}`}>{connected ? "Conectado" : mode === "locked" ? "Acesso expirado" : mode === "unavailable" || connection.state === "unknown" ? "Estado indisponível" : connection.state === "connecting" ? "Conectando" : "Não conectado"}</span>
     <h3>WhatsApp</h3>
     <p>Consulte a instância da Evolution API e conecte seu aparelho pelo QR Code.</p>
     {mode === "idle" && <p>Consultando integração...</p>}
     {mode === "unavailable" && <div className="evolution-message">Configure EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE_NAME e EVOLUTION_SETUP_TOKEN no servidor do Ofertou.</div>}
     {mode === "locked" && <form className="evolution-login" onSubmit={login}>
-      <label className="field">Chave de configuração<input type="password" autoComplete="off" value={token} onChange={event => setToken(event.target.value)} required placeholder="Chave definida no servidor"/></label>
+      <p>O acesso ao painel expirou ou não foi liberado. Isso não desconecta o WhatsApp. Libere novamente por 1 hora.</p><label className="field">Chave de configuração<input type="password" autoComplete="off" value={token} onChange={event => setToken(event.target.value)} required placeholder="Chave definida no servidor"/></label>
       <button className="button outline" type="submit"><ShieldCheck size={15}/> Acessar conexão</button>
     </form>}
     {(mode === "ready" || mode === "loading") && <>

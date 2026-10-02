@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       if (!timingSafeEqual(digest(data.token), digest(key))) return reply({ error: "unauthorized" }, 401);
       const actor = await setupActor("offers:write");
       await actor.db.insert(auditLogs).values({ workspaceId: actor.workspaceId, actorId: actor.actorId, operation: "mercadolivre.products_access", entityType: "workspace", entityId: actor.workspaceId, modifiedBy: actor.actorId });
-      jar.set(COOKIE, encryptCredentials({ scope: "mercadolivre:products:manage", workspace: actor.workspaceId, actor: actor.actorId, keyVersion: digest(key).toString("hex"), expires: String(Date.now() + 900000) }), { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/api/integrations/mercadolivre/products", maxAge: 900 });
+      jar.set(COOKIE, encryptCredentials({ scope: "mercadolivre:products:manage", workspace: actor.workspaceId, actor: actor.actorId, keyVersion: digest(key).toString("hex"), expires: String(Date.now() + 3600000) }), { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/api/integrations/mercadolivre/products", maxAge: 3600 });
       return reply({ unlocked: true });
     }
     let session: Record<string, string>;

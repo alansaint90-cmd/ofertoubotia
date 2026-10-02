@@ -33,7 +33,11 @@ export async function liveMercadoLivreToken(actor: Awaited<ReturnType<typeof set
       await tx.insert(auditLogs).values({ workspaceId, actorId, operation: "mercadolivre.token_refreshed", entityType: "affiliate_integration", entityId: claim.row.id, modifiedBy: actorId });
     });
     return tokens;
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "refresh_rate_limited") {
+      await db.update(affiliateIntegrations).set({ status: "connected", updatedAt: new Date(), modifiedBy: actorId }).where(owned);
+      throw new Error("rate_limited");
+    }
     await db.transaction(async tx => {
       const rows = await tx.update(affiliateIntegrations).set({ status: "reconnect_required", updatedAt: new Date(), modifiedBy: actorId }).where(owned).returning({ id: affiliateIntegrations.id });
       if (rows.length) await tx.insert(auditLogs).values({ workspaceId, actorId, operation: "mercadolivre.refresh_failed", entityType: "affiliate_integration", entityId: claim.row.id, modifiedBy: actorId });
