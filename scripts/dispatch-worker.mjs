@@ -1,3 +1,4 @@
+import { scheduleCampaign } from "./campaign-scheduler.mjs";
 import { dispatchMediaPayload } from "../src/lib/evolution/dispatch-media.ts";
 import pg from "pg";
 import { allowedDispatchTarget } from "../src/lib/evolution/target-code.ts";
@@ -35,6 +36,17 @@ async function claim() {
       for update of d skip locked limit 1`, [process.env.EVOLUTION_WORKSPACE_ID]);
     const job = result.rows[0];
     if (!job) { await client.query("commit"); return null; }
+    if (job.product_snapshot?.campaignId) {
+      const { rows } = await client.query("select * from campaigns where id=$1 and workspace_id=$2 and active=true and is_deleted=false and extract(hour from now() at time zone 'America/Sao_Paulo') >= start_hour and extract(hour from now() at time zone 'America/Sao_Paulo') < end_hour", [job.product_snapshot.campaignId,job.workspace_id]);
+      const c=rows[0];
+      const { rows: currentProducts } = await client.query("select p.id from product_collection p join offers o on o.external_product_id=p.id::text where o.id=$1 and p.workspace_id=$2 and p.is_active=true and p.is_deleted=false",[job.offer_id,job.workspace_id]);
+      if (!c || !currentProducts.length || !Number.isFinite(Date.parse(job.product_snapshot.reviewedAt)) || Date.parse(job.product_snapshot.reviewedAt) < Date.now()-c.review_hours*3600000) {
+        await client.query("update dispatches set status='failed',last_error='campaign_paused_or_review_expired',updated_at=now() where id=$1",[job.id]);
+        await client.query("update offers set status='failed',updated_at=now() where id=$1",[job.offer_id]);
+        await audit(client,job,"dispatch.failed",{reason:"campaign_paused_or_review_expired"});
+        await client.query("commit"); return null;
+      }
+    }
     if (!job.is_active || !allowedDispatchTarget(job.external_group_id, job.metadata) || job.instance_name !== process.env.EVOLUTION_INSTANCE_NAME) {
       await client.query("update dispatches set status='failed', last_error='target_not_allowed', updated_at=now(), modified_by=$2 where id=$1", [job.id, job.actor_id]);
       await client.query("update offers set status='failed', updated_at=now(), modified_by=$2 where id=$1", [job.offer_id, job.actor_id]);
@@ -100,7 +112,7 @@ process.on("SIGINT", () => { stopping = true; });
 console.info("Ofertou Evolution worker started");
 try {
   while (!stopping) {
-    try { const job = await claim(); if (job) await processJob(job); else await wait(5000); }
+    try { await scheduleCampaign(pool, process.env.EVOLUTION_WORKSPACE_ID, process.env.EVOLUTION_INSTANCE_NAME); const job = await claim(); if (job) await processJob(job); else await wait(5000); }
     catch { console.error("Evolution worker cycle failed"); await wait(5000); }
   }
 } finally { await pool.end(); }

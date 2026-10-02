@@ -60,6 +60,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const { db, workspaceId, actorId } = await setupActor("dispatches:publish");
     const result = await db.transaction(async tx => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${workspaceId}), hashtext(${parsed.data.productId}))`);
       const [product] = await tx.select().from(productCollection).where(and(eq(productCollection.id, parsed.data.productId), eq(productCollection.workspaceId, workspaceId), eq(productCollection.isDeleted, false), eq(productCollection.isActive, true))).for("update").limit(1);
       if (!product || product.updatedAt.toISOString() !== parsed.data.updatedAt) throw new Error("product_changed");
       const details = manualReviewSchema.safeParse({ ...(product.details as object), confirmed: true });

@@ -43,6 +43,13 @@
       "when": 1790823816424,
       "tag": "0005_fancy_electro",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790906732583,
+      "tag": "0006_high_harpoon",
+      "breakpoints": true
     }
   ]
 }

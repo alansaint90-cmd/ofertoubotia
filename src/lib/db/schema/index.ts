@@ -178,3 +178,17 @@ export const auditLogs = pgTable("audit_logs", {
   modifiedBy: uuid("modified_by").notNull().references(() => users.id, { onDelete: "restrict", onUpdate: "restrict" }),
   ...audit(),
 }, table => [index("audit_logs_workspace_created_idx").on(table.workspaceId, table.createdAt)]);
+
+export const campaigns = pgTable("campaigns", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "restrict" }),
+  productIds: jsonb("product_ids").notNull().default([]),
+  startHour: integer("start_hour").notNull().default(8),
+  endHour: integer("end_hour").notNull().default(22),
+  intervalMinutes: integer("interval_minutes").notNull().default(10),
+  reviewHours: integer("review_hours").notNull().default(24),
+  active: boolean("active").notNull().default(false),
+  nextAt: timestamp("next_at", { withTimezone: true }).notNull().defaultNow(),
+  modifiedBy: uuid("modified_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+  ...audit(),
+}, table => [uniqueIndex("campaign_workspace_idx").on(table.workspaceId)]);
