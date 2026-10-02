@@ -34,8 +34,10 @@ function noStore(body: unknown, status = 200, headers?: HeadersInit) {
 export async function GET(request: Request): Promise<Response> {
   if (!setupReady()) return noStore({ error: "not_configured" }, 503);
   if (!hasSetupSession(request)) return noStore({ error: "unauthorized" }, 401);
-  try { return noStore(await connectionState()); }
-  catch { return noStore({ error: "evolution_unavailable" }, 502); }
+  // Renew only an already authenticated session, independently of provider health.
+  const headers = { "Set-Cookie": sessionCookie() };
+  try { return noStore(await connectionState(), 200, headers); }
+  catch { return noStore({ error: "evolution_unavailable" }, 502, headers); }
 }
 
 export async function POST(request: Request): Promise<Response> {

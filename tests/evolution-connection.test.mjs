@@ -34,6 +34,26 @@ test("sessão de configuração exige chave e expira quando a chave muda", () =>
   process.env.EVOLUTION_SETUP_TOKEN = "test-only-setup-token-with-at-least-32-characters";
 });
 
+test("acesso persiste além de uma hora, renova e expira após inatividade", () => {
+  const now = Date.now;
+  let time = now();
+  Date.now = () => time;
+  try {
+    const requestFor = cookie => new Request("https://ofertou.example.test/api/integrations/evolution", { headers: { cookie: cookie.split(";")[0] } });
+    const cookie = sessionCookie();
+    assert.match(cookie, /HttpOnly; SameSite=Strict; Path=\/api; Max-Age=2592000/);
+    const request = requestFor(cookie);
+    time += 29 * 86400000;
+    assert.equal(hasSetupSession(request), true);
+    const renewed = requestFor(sessionCookie());
+    time += 2 * 86400000;
+    assert.equal(hasSetupSession(request), false);
+    assert.equal(hasSetupSession(renewed), true);
+    time += 30 * 86400000;
+    assert.equal(hasSetupSession(renewed), false);
+  } finally { Date.now = now; }
+});
+
 test("operações de escrita exigem mesma origem", () => {
   const url = "https://ofertou.example.test/api/integrations/evolution";
   assert.equal(sameOrigin(new Request(url, { headers: { origin: "https://ofertou.example.test" } })), true);

@@ -101,7 +101,7 @@ export function EvolutionConnection() {
     {mode === "idle" && <p>Consultando integração...</p>}
     {mode === "unavailable" && <div className="evolution-message">Configure EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE_NAME e EVOLUTION_SETUP_TOKEN no servidor do Ofertou.</div>}
     {mode === "locked" && <form className="evolution-login" onSubmit={login}>
-      <p>O acesso ao painel expirou ou não foi liberado. Isso não desconecta o WhatsApp. Libere novamente por 1 hora.</p><label className="field">Chave de configuração<input type="password" autoComplete="off" value={token} onChange={event => setToken(event.target.value)} required placeholder="Chave definida no servidor"/></label>
+      <p>Libere o acesso neste navegador por 30 dias, com renovação automática ao consultar o painel. A expiração deste acesso não desconecta o WhatsApp.</p><label className="field">Chave de configuração<input type="password" autoComplete="off" value={token} onChange={event => setToken(event.target.value)} required placeholder="Valor de EVOLUTION_SETUP_TOKEN no servidor"/></label>
       <button className="button outline" type="submit"><ShieldCheck size={15}/> Acessar conexão</button>
     </form>}
     {(mode === "ready" || mode === "loading") && <>

@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 const COOKIE = "ofertou_evolution_setup";
-const SESSION_SECONDS = 60 * 60;
+const SESSION_SECONDS = 30 * 24 * 60 * 60;
 
 export function setupReady(): boolean {
   const token = process.env.EVOLUTION_SETUP_TOKEN?.trim();
